@@ -1025,13 +1025,20 @@ function generateFallback(char, messages, doubleTexted) {
 async function generateReply(apiKey, char, messages, doubleTexted, userName) {
   if (apiKey) {
     try {
-      return await generateWithClaude(apiKey, char, messages, doubleTexted, userName);
+      const text = await generateWithClaude(
+        apiKey,
+        char,
+        messages,
+        doubleTexted,
+        userName
+      );
+      return { text, offline: false };
     } catch (err) {
       console.warn("Claude API call failed, using offline persona:", err);
     }
   }
   await new Promise((r) => setTimeout(r, rand(300, 1200)));
-  return generateFallback(char, messages, doubleTexted);
+  return { text: generateFallback(char, messages, doubleTexted), offline: true };
 }
 
 /* ============================================================================
@@ -1098,6 +1105,7 @@ export default function App() {
   const [showCompose, setShowCompose] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [apiTrouble, setApiTrouble] = useState(0);
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
   const [systemDark, setSystemDark] = useState(
@@ -1214,7 +1222,7 @@ export default function App() {
     async (charId, cycleToken) => {
       const char = CHAR_MAP[charId];
       const history = convosRef.current[charId] ?? [];
-      const text = await generateReply(
+      const { text, offline } = await generateReply(
         apiKeyRef.current,
         char,
         history,
@@ -1222,6 +1230,12 @@ export default function App() {
         settingsRef.current.userName.trim()
       );
       if (cycleRef.current[charId] !== cycleToken) return;
+      // A key is configured but the live call failed — surface it, otherwise
+      // canned replies masquerade as the real thing.
+      if (offline && apiKeyRef.current) {
+        setApiTrouble(Date.now());
+        setTimeout(() => setApiTrouble(0), 7000);
+      }
 
       const bubbles = splitBubbles(text);
       const deliver = (i) => {
@@ -1477,6 +1491,7 @@ export default function App() {
               typing={typing}
               search={search}
               setSearch={setSearch}
+              offlineMode={!apiKey}
               listMode={listMode}
               setListMode={setListMode}
               archivedCount={archivedCount}
@@ -1516,6 +1531,16 @@ export default function App() {
             )}
           </div>
         </div>
+
+        {/* API trouble toast — live generation failed despite a key */}
+        {apiTrouble > 0 && (
+          <div className="absolute bottom-24 inset-x-0 z-40 flex justify-center px-6 pointer-events-none">
+            <p className="bg-[#2b2d42]/95 text-white text-[13px] px-4 py-2.5 rounded-2xl shadow-lg bubble-in text-center">
+              Couldn't reach Claude — sent an offline reply. Check your API key
+              or credits in Settings.
+            </p>
+          </div>
+        )}
 
         {/* NEW MESSAGE (compose) */}
         {showCompose && (
@@ -1733,6 +1758,7 @@ function ThreadList({
   typing,
   search,
   setSearch,
+  offlineMode,
   listMode,
   setListMode,
   archivedCount,
@@ -1795,6 +1821,18 @@ function ThreadList({
 
       {/* Threads */}
       <div className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-[#0f1120] pt-1.5">
+        {offlineMode && !inArchive && (
+          <button
+            onClick={onEdit}
+            className="mx-5 mb-2 flex items-center gap-2.5 w-[calc(100%-40px)] bg-[#fff3df] dark:bg-[#2a2410] rounded-2xl px-3.5 py-2.5 text-left active:opacity-80"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#f5a623] shrink-0" />
+            <span className="flex-1 text-[13px] leading-snug text-[#8a6420] dark:text-[#e0b45e]">
+              Offline demo mode — characters give canned replies. Tap here to
+              add your Anthropic API key.
+            </span>
+          </button>
+        )}
         {!inArchive && archivedCount > 0 && (
           <button
             onClick={() => {
