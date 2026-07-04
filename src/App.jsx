@@ -7,13 +7,15 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Image as ImageIcon,
   Info,
   KeyRound,
   Megaphone,
+  MessageCircle,
+  Plus,
   Search,
-  SquarePen,
+  Settings,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 
@@ -725,6 +727,28 @@ const AVAILABILITY_LABELS = {
   market_hours: "Reachable during market hours only",
 };
 
+/** Whether the character would plausibly be "online" right now. */
+function isOnline(char) {
+  const h = new Date().getHours();
+  switch (char.availability) {
+    case "high":
+    case "transactional":
+      return true;
+    case "medium":
+      return h >= 8 && h < 23;
+    case "nocturnal":
+      return h >= 21 || h < 6;
+    case "market_hours":
+      return h >= 7 && h < 20;
+    case "sporadic":
+      return h % 3 === 0;
+    case "low":
+      return h % 5 === 0;
+    default:
+      return false;
+  }
+}
+
 /* ============================================================================
    HELPERS
    ========================================================================== */
@@ -1014,7 +1038,7 @@ async function generateReply(apiKey, char, messages, doubleTexted, userName) {
    SMALL UI PIECES
    ========================================================================== */
 
-function Avatar({ char, size = "w-12 h-12", text = "text-base" }) {
+function Avatar({ char, size = "w-12 h-12", text = "text-base", dot = false }) {
   return (
     <div className={`relative shrink-0 ${size}`}>
       <div
@@ -1022,6 +1046,9 @@ function Avatar({ char, size = "w-12 h-12", text = "text-base" }) {
       >
         {char.initials}
       </div>
+      {dot && isOnline(char) && (
+        <span className="absolute bottom-0 left-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-[#0f1120]" />
+      )}
     </div>
   );
 }
@@ -1029,12 +1056,12 @@ function Avatar({ char, size = "w-12 h-12", text = "text-base" }) {
 function TypingBubble() {
   return (
     <div className="flex justify-start px-4 bubble-in">
-      <div className="bg-gray-200 dark:bg-[#26252a] rounded-2xl rounded-bl-md px-4 py-3 mt-0.5">
+      <div className="bg-white dark:bg-[#1e2140] shadow-sm rounded-[20px] rounded-bl-[6px] px-4 py-3 mt-0.5">
         <div className="flex gap-1">
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="typing-dot w-2 h-2 rounded-full bg-gray-400 dark:bg-neutral-500"
+              className="typing-dot w-2 h-2 rounded-full bg-[#aab2d8] dark:bg-[#5d648f]"
               style={{ animationDelay: `${i * 0.18}s` }}
             />
           ))}
@@ -1364,9 +1391,10 @@ export default function App() {
       .map((c) => {
         const msgs = convos[c.id] ?? [];
         const last = msgs[msgs.length - 1];
-        const lastCharMsg = [...msgs].reverse().find((m) => m.sender === "char");
-        const unread = !!lastCharMsg && lastCharMsg.ts > (seen[c.id] ?? 0);
-        return { char: c, last, unread };
+        const unreadCount = msgs.filter(
+          (m) => m.sender === "char" && m.ts > (seen[c.id] ?? 0)
+        ).length;
+        return { char: c, last, unreadCount };
       })
       .sort((a, b) => (b.last?.ts ?? 0) - (a.last?.ts ?? 0));
   }, [convos, seen, search, archived, listMode]);
@@ -1434,13 +1462,13 @@ export default function App() {
 
   return (
     <div
-      className={`${dark ? "dark " : ""}h-full flex items-center justify-center bg-neutral-950`}
+      className={`${dark ? "dark " : ""}h-full flex items-center justify-center bg-[#aab4e4] dark:bg-[#05060f]`}
     >
-      <div className="relative w-full h-full sm:w-[400px] sm:h-[850px] sm:max-h-[95vh] sm:rounded-[48px] sm:border-[6px] sm:border-neutral-800 sm:shadow-2xl overflow-hidden bg-white dark:bg-black flex flex-col">
+      <div className="relative w-full h-full sm:w-[400px] sm:h-[850px] sm:max-h-[95vh] sm:rounded-[40px] sm:shadow-2xl overflow-hidden bg-white dark:bg-[#0f1120] flex flex-col">
         <div className="relative flex-1 overflow-hidden">
           {/* THREAD LIST */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-black transition-transform duration-300 ease-out ${
+            className={`absolute inset-0 flex flex-col bg-white dark:bg-[#0f1120] transition-transform duration-300 ease-out ${
               view === "chat" ? "-translate-x-1/3" : "translate-x-0"
             }`}
           >
@@ -1464,7 +1492,7 @@ export default function App() {
 
           {/* ACTIVE CHAT */}
           <div
-            className={`absolute inset-0 flex flex-col bg-white dark:bg-black transition-transform duration-300 ease-out ${
+            className={`absolute inset-0 flex flex-col bg-[#eef0fa] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out ${
               view === "chat" ? "translate-x-0" : "translate-x-full"
             } shadow-[-8px_0_24px_rgba(0,0,0,0.08)]`}
           >
@@ -1537,11 +1565,12 @@ export default function App() {
    ========================================================================== */
 
 const ACTION_W = 148; // width of the revealed swipe actions
+const SNAP_EASE = "transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)";
 
 function ThreadRow({
   char,
   last,
-  unread,
+  unreadCount,
   typingOn,
   isOpen,
   archivedMode,
@@ -1550,46 +1579,77 @@ function ThreadRow({
   onArchive,
   onDelete,
 }) {
-  const [drag, setDrag] = useState(0);
+  const rowRef = useRef(null);
   const startRef = useRef(null);
   const draggedRef = useRef(false);
-  const dragRef = useRef(0);
+  const posRef = useRef(0);
+  const velRef = useRef({ x: 0, t: 0, v: 0 });
 
   const base = isOpen ? -ACTION_W : 0;
-  const x = Math.max(-ACTION_W - 24, Math.min(0, base + drag));
+
+  // Snap to the resting point whenever open/closed state changes.
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    el.style.transition = SNAP_EASE;
+    el.style.transform = `translateX(${base}px)`;
+    posRef.current = base;
+  }, [base]);
+
+  const setX = (x) => {
+    posRef.current = x;
+    const el = rowRef.current;
+    if (el) el.style.transform = `translateX(${x}px)`;
+  };
 
   const onPointerDown = (e) => {
     startRef.current = { x: e.clientX, y: e.clientY };
     draggedRef.current = false;
-    dragRef.current = 0;
+    velRef.current = { x: e.clientX, t: performance.now(), v: 0 };
   };
   const onPointerMove = (e) => {
     const s = startRef.current;
     if (!s) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
-    if (!draggedRef.current && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+    if (!draggedRef.current && Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) {
       draggedRef.current = true;
       try {
         e.currentTarget.setPointerCapture?.(e.pointerId);
       } catch {}
+      // Track the finger 1:1 with zero React re-renders while dragging
+      const el = rowRef.current;
+      if (el) el.style.transition = "none";
     }
-    if (draggedRef.current) {
-      dragRef.current = dx;
-      setDrag(dx);
+    if (!draggedRef.current) return;
+    const now = performance.now();
+    const v = velRef.current;
+    if (now - v.t > 0) {
+      velRef.current = { x: e.clientX, t: now, v: (e.clientX - v.x) / (now - v.t) };
     }
+    // Rubber-band resistance past the fully-open point
+    const raw = base + dx;
+    const x =
+      raw >= 0 ? 0 : raw > -ACTION_W ? raw : -ACTION_W + (raw + ACTION_W) * 0.28;
+    setX(x);
   };
   const onPointerUp = () => {
-    if (draggedRef.current) {
-      const finalX = Math.max(
-        -ACTION_W - 24,
-        Math.min(0, base + dragRef.current)
-      );
-      onSwipe(finalX < -ACTION_W / 2 ? char.id : null);
-    }
+    const wasDragging = draggedRef.current;
     startRef.current = null;
-    dragRef.current = 0;
-    setDrag(0);
+    if (!wasDragging) return;
+    // A quick flick wins over position; otherwise snap to the nearer state.
+    const v = velRef.current.v; // px/ms — negative means a leftward flick
+    const open =
+      v < -0.35 ? true : v > 0.35 ? false : posRef.current < -ACTION_W / 2;
+    if (open === isOpen) {
+      const el = rowRef.current;
+      if (el) {
+        el.style.transition = SNAP_EASE;
+        el.style.transform = `translateX(${base}px)`;
+        posRef.current = base;
+      }
+    }
+    onSwipe(open ? char.id : null);
   };
 
   const snippet = typingOn
@@ -1603,17 +1663,20 @@ function ThreadRow({
   return (
     <div className="relative overflow-hidden">
       {/* actions revealed behind the row */}
-      <div className="absolute inset-y-0 right-0 flex" style={{ width: ACTION_W }}>
+      <div
+        className="absolute inset-y-1 right-3 flex gap-1.5"
+        style={{ width: ACTION_W }}
+      >
         <button
           onClick={() => onArchive(char.id, !archivedMode)}
-          className="flex-1 flex flex-col items-center justify-center gap-1 bg-[#a1a1aa] text-white text-[12px] font-medium"
+          className="flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl bg-[#8f97c4] text-white text-[11px] font-medium active:opacity-80"
         >
           <Archive className="w-5 h-5" strokeWidth={2} />
           {archivedMode ? "Unarchive" : "Archive"}
         </button>
         <button
           onClick={() => onDelete(char.id)}
-          className="flex-1 flex flex-col items-center justify-center gap-1 bg-red-500 text-white text-[12px] font-medium"
+          className="flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl bg-[#ff5b7f] text-white text-[11px] font-medium active:opacity-80"
         >
           <Trash2 className="w-5 h-5" strokeWidth={2} />
           Delete
@@ -1622,6 +1685,7 @@ function ThreadRow({
 
       {/* the row itself */}
       <button
+        ref={rowRef}
         onClick={() => {
           if (draggedRef.current) return;
           if (isOpen) onSwipe(null);
@@ -1631,39 +1695,33 @@ function ThreadRow({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        style={{
-          transform: `translateX(${x}px)`,
-          transition: drag === 0 ? "transform 0.22s ease-out" : "none",
-          touchAction: "pan-y",
-        }}
-        className="relative w-full flex items-center gap-3 pl-3 pr-2 bg-white dark:bg-black active:bg-gray-100 dark:active:bg-neutral-900 text-left"
+        style={{ touchAction: "pan-y", willChange: "transform" }}
+        className="relative w-full flex items-center gap-3.5 px-5 bg-white dark:bg-[#0f1120] active:bg-[#f4f5fc] dark:active:bg-[#161936] text-left"
       >
-        <span className="w-2.5 shrink-0 flex justify-center">
-          {unread && <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
-        </span>
-        <Avatar char={char} />
-        <div className="flex-1 min-w-0 border-b border-gray-200/80 dark:border-neutral-800 py-2.5 pr-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="font-semibold text-[16px] text-black dark:text-white truncate">
-              {char.name}
-            </span>
-            <span className="flex items-center gap-0.5 shrink-0 text-[14px] text-gray-500 dark:text-neutral-400">
-              {fmtRelative(last?.ts)}
-              <ChevronRight
-                className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-600"
-                strokeWidth={2.5}
-              />
-            </span>
-          </div>
+        <Avatar char={char} dot />
+        <div className="flex-1 min-w-0 py-3">
+          <p className="font-semibold text-[15.5px] text-[#232847] dark:text-white truncate">
+            {char.name}
+          </p>
           <p
-            className={`text-[14.5px] leading-snug line-clamp-2 ${
+            className={`text-[13.5px] leading-snug line-clamp-2 mt-0.5 ${
               typingOn
-                ? "text-blue-500 italic"
-                : "text-gray-500 dark:text-neutral-400"
+                ? "text-[#5B6CFF] italic"
+                : "text-[#9aa0bd] dark:text-[#6d7396]"
             }`}
           >
             {snippet}
           </p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 shrink-0 self-start pt-3.5">
+          <span className="text-[12px] text-[#b4b9d2] dark:text-[#585e82]">
+            {fmtRelative(last?.ts)}
+          </span>
+          {unreadCount > 0 && (
+            <span className="min-w-[22px] h-[22px] px-1.5 rounded-lg bg-[#5B6CFF] text-white text-[11.5px] font-semibold flex items-center justify-center">
+              {unreadCount}
+            </span>
+          )}
         </div>
       </button>
     </div>
@@ -1687,77 +1745,76 @@ function ThreadList({
   onEdit,
 }) {
   const inArchive = listMode === "archived";
+  const [searchOpen, setSearchOpen] = useState(false);
   return (
     <>
-      <div className="pt-4 px-4 bg-[#f9f9f9]/95 dark:bg-[#141414]/95 backdrop-blur border-b border-gray-200/70 dark:border-neutral-800">
-        <div className="flex items-center justify-between h-9">
-          {inArchive ? (
+      {/* Header */}
+      <div className="pt-6 px-5 pb-1 bg-white dark:bg-[#0f1120]">
+        <div className="flex items-center gap-1">
+          {inArchive && (
             <button
               onClick={() => {
                 setListMode("inbox");
                 setOpenSwipeId(null);
               }}
-              className="flex items-center text-[17px] text-blue-500 active:opacity-50 -ml-2"
+              className="text-[#5B6CFF] active:opacity-60 -ml-2 p-1"
+              aria-label="Back to messages"
             >
-              <ChevronLeft className="w-6 h-6" strokeWidth={2.2} />
-              Messages
-            </button>
-          ) : (
-            <button
-              onClick={onEdit}
-              className="text-[17px] text-blue-500 active:opacity-50"
-            >
-              Edit
+              <ChevronLeft className="w-7 h-7" strokeWidth={2.4} />
             </button>
           )}
-          <span className="text-[17px] font-semibold text-black dark:text-white">
+          <h1 className="flex-1 text-[30px] font-extrabold tracking-tight text-[#232847] dark:text-white">
             {inArchive ? "Archived" : "Messages"}
-          </span>
+          </h1>
           <button
-            onClick={onCompose}
-            className={`text-blue-500 active:opacity-50 ${
-              inArchive ? "invisible" : ""
-            }`}
-            aria-label="New message"
+            onClick={() => setSearchOpen((v) => !v)}
+            className="p-2 text-[#232847] dark:text-white active:opacity-50"
+            aria-label="Search"
           >
-            <SquarePen className="w-[22px] h-[22px]" strokeWidth={1.8} />
+            <Search className="w-[22px] h-[22px]" strokeWidth={2.2} />
           </button>
         </div>
-        <div className="py-2.5">
-          <div className="flex items-center gap-1.5 bg-[#e3e3e8] dark:bg-[#2c2c2e] rounded-[10px] px-2 py-[7px]">
-            <Search className="w-4 h-4 text-gray-500" strokeWidth={2.2} />
+        {searchOpen && (
+          <div className="mt-2 mb-1 flex items-center gap-2 bg-[#f0f1f9] dark:bg-[#1a1d33] rounded-2xl px-3 py-2 bubble-in">
+            <Search className="w-4 h-4 text-[#9aa0bd]" strokeWidth={2.2} />
             <input
+              autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="flex-1 bg-transparent text-[16px] text-black dark:text-white placeholder-gray-500 outline-none"
+              className="flex-1 bg-transparent text-[15px] text-[#232847] dark:text-white placeholder-[#9aa0bd] outline-none"
             />
+            {search && (
+              <button onClick={() => setSearch("")} aria-label="Clear search">
+                <X className="w-4 h-4 text-[#9aa0bd]" strokeWidth={2.4} />
+              </button>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-black">
+      {/* Threads */}
+      <div className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-[#0f1120] pt-1.5">
         {!inArchive && archivedCount > 0 && (
           <button
             onClick={() => {
               setListMode("archived");
               setOpenSwipeId(null);
             }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 active:bg-gray-100 dark:active:bg-neutral-900 text-left border-b border-gray-200/80 dark:border-neutral-800"
+            className="w-full flex items-center gap-3.5 px-5 py-2 active:bg-[#f4f5fc] dark:active:bg-[#161936] text-left"
           >
-            <Archive
-              className="w-5 h-5 text-gray-400 dark:text-neutral-500"
-              strokeWidth={1.8}
-            />
-            <span className="flex-1 text-[15px] text-gray-500 dark:text-neutral-400">
+            <span className="w-12 h-12 rounded-full bg-[#f0f1f9] dark:bg-[#1a1d33] flex items-center justify-center shrink-0">
+              <Archive className="w-5 h-5 text-[#9aa0bd]" strokeWidth={1.8} />
+            </span>
+            <span className="flex-1 text-[15px] font-medium text-[#9aa0bd]">
               Archived
             </span>
-            <span className="text-[14px] text-gray-400 dark:text-neutral-500">
+            <span className="text-[13px] text-[#b4b9d2] dark:text-[#585e82]">
               {archivedCount}
             </span>
             <ChevronRight
-              className="w-4 h-4 text-gray-400 dark:text-neutral-600"
-              strokeWidth={2.5}
+              className="w-4 h-4 text-[#b4b9d2] dark:text-[#585e82]"
+              strokeWidth={2.4}
             />
           </button>
         )}
@@ -1766,31 +1823,31 @@ function ThreadList({
           <div className="flex flex-col items-center justify-center h-full px-10 text-center -mt-10">
             {inArchive ? (
               <Archive
-                className="w-10 h-10 text-gray-300 dark:text-neutral-700 mb-3"
+                className="w-10 h-10 text-[#d6d9ec] dark:text-[#2a2e4d] mb-3"
                 strokeWidth={1.5}
               />
             ) : (
-              <SquarePen
-                className="w-10 h-10 text-gray-300 dark:text-neutral-700 mb-3"
+              <MessageCircle
+                className="w-10 h-10 text-[#d6d9ec] dark:text-[#2a2e4d] mb-3"
                 strokeWidth={1.5}
               />
             )}
-            <p className="text-[16px] font-semibold text-gray-500 dark:text-neutral-400">
+            <p className="text-[16px] font-semibold text-[#9aa0bd]">
               {inArchive ? "No Archived Chats" : "No Messages"}
             </p>
             {!inArchive && (
-              <p className="text-[14px] text-gray-400 dark:text-neutral-500 mt-1">
-                Tap the compose button to choose someone to text.
+              <p className="text-[14px] text-[#b4b9d2] dark:text-[#585e82] mt-1">
+                Tap the + button to choose someone to text.
               </p>
             )}
           </div>
         )}
-        {threads.map(({ char, last, unread }) => (
+        {threads.map(({ char, last, unreadCount }) => (
           <ThreadRow
             key={char.id}
             char={char}
             last={last}
-            unread={unread}
+            unreadCount={unreadCount}
             typingOn={!!typing[char.id]}
             isOpen={openSwipeId === char.id}
             archivedMode={inArchive}
@@ -1800,7 +1857,43 @@ function ThreadList({
             onDelete={onDelete}
           />
         ))}
-        <div className="h-8" />
+        <div className="h-24" />
+      </div>
+
+      {/* Compose FAB */}
+      {!inArchive && (
+        <button
+          onClick={onCompose}
+          aria-label="New message"
+          className="absolute bottom-[84px] right-5 z-20 w-14 h-14 rounded-full bg-[#ff4fa0] text-white shadow-lg shadow-pink-500/40 flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <Plus className="w-7 h-7" strokeWidth={2.4} />
+        </button>
+      )}
+
+      {/* Tab bar */}
+      <div className="h-[60px] shrink-0 bg-white dark:bg-[#0f1120] border-t border-[#eef0f8] dark:border-[#1c1f38] flex items-center justify-around px-8">
+        <button
+          className="flex flex-col items-center gap-1 text-[#5B6CFF]"
+          aria-label="Chats"
+        >
+          <MessageCircle className="w-6 h-6" strokeWidth={2} />
+          <span className="w-1 h-1 rounded-full bg-[#5B6CFF]" />
+        </button>
+        <button
+          onClick={onCompose}
+          className="text-[#b4b9d2] dark:text-[#585e82] active:opacity-60"
+          aria-label="Contacts"
+        >
+          <Users className="w-6 h-6" strokeWidth={2} />
+        </button>
+        <button
+          onClick={onEdit}
+          className="text-[#b4b9d2] dark:text-[#585e82] active:opacity-60"
+          aria-label="Settings"
+        >
+          <Settings className="w-6 h-6" strokeWidth={2} />
+        </button>
       </div>
     </>
   );
@@ -1816,12 +1909,12 @@ function ComposeSheet({ onPick, onBroadcast, onClose }) {
     (c) => !q.trim() || c.name.toLowerCase().includes(q.trim().toLowerCase())
   );
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-white dark:bg-[#1c1c1e] bubble-in">
-      <div className="pt-4 px-4 bg-[#f9f9f9] dark:bg-[#141414] border-b border-gray-200/70 dark:border-neutral-800">
+    <div className="absolute inset-0 z-30 flex flex-col bg-white dark:bg-[#12142a] bubble-in">
+      <div className="pt-4 px-4 bg-[#f6f7fd] dark:bg-[#0f1120] border-b border-gray-200/70 dark:border-neutral-800">
         <div className="flex items-center justify-between h-9">
           <button
             onClick={onClose}
-            className="text-[17px] text-blue-500 active:opacity-50"
+            className="text-[17px] text-[#5B6CFF] active:opacity-50"
           >
             Cancel
           </button>
@@ -1846,11 +1939,11 @@ function ComposeSheet({ onPick, onBroadcast, onClose }) {
           onClick={onBroadcast}
           className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-200/80 dark:border-neutral-800 active:bg-gray-100 dark:active:bg-neutral-900 text-left"
         >
-          <span className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+          <span className="w-12 h-12 rounded-full bg-[#5B6CFF] flex items-center justify-center shrink-0">
             <Megaphone className="w-5 h-5 text-white" strokeWidth={2} />
           </span>
           <div>
-            <p className="font-semibold text-[16px] text-blue-500">
+            <p className="font-semibold text-[16px] text-[#5B6CFF]">
               New Broadcast
             </p>
             <p className="text-[13px] text-gray-500 dark:text-neutral-400">
@@ -1900,12 +1993,12 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
   const recipients = CHARACTERS.filter((c) => !excluded.has(c.id));
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-white dark:bg-[#1c1c1e] bubble-in">
-      <div className="pt-4 px-4 bg-[#f9f9f9] dark:bg-[#141414] border-b border-gray-200/70 dark:border-neutral-800">
+    <div className="absolute inset-0 z-30 flex flex-col bg-white dark:bg-[#12142a] bubble-in">
+      <div className="pt-4 px-4 bg-[#f6f7fd] dark:bg-[#0f1120] border-b border-gray-200/70 dark:border-neutral-800">
         <div className="flex items-center justify-between h-9 pb-2">
           <button
             onClick={onClose}
-            className="text-[17px] text-blue-500 active:opacity-50"
+            className="text-[17px] text-[#5B6CFF] active:opacity-50"
           >
             Cancel
           </button>
@@ -1940,7 +2033,7 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
                 className={`w-6 h-6 rounded-full flex items-center justify-center border ${
                   off
                     ? "border-gray-300 dark:border-neutral-600"
-                    : "bg-blue-500 border-blue-500"
+                    : "bg-[#5B6CFF] border-[#5B6CFF]"
                 }`}
               >
                 {!off && (
@@ -1953,8 +2046,8 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
         <div className="h-4" />
       </div>
 
-      <div className="border-t border-gray-200/70 dark:border-neutral-800 bg-[#f9f9f9] dark:bg-[#141414] px-3 pt-2 pb-5 flex items-end gap-2">
-        <div className="flex-1 flex items-end bg-white dark:bg-[#2c2c2e] border border-gray-300 dark:border-neutral-700 rounded-[20px] pl-3.5 pr-1 py-[3px] min-h-[36px]">
+      <div className="border-t border-gray-200/70 dark:border-neutral-800 bg-[#f6f7fd] dark:bg-[#0f1120] px-3 pt-2 pb-5 flex items-end gap-2">
+        <div className="flex-1 flex items-end bg-white dark:bg-[#1e2140] border border-gray-300 dark:border-neutral-700 rounded-[20px] pl-3.5 pr-1 py-[3px] min-h-[36px]">
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -1978,7 +2071,7 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
             aria-label="Send broadcast"
             className={`shrink-0 w-[29px] h-[29px] mb-px rounded-full flex items-center justify-center transition-colors ${
               text.trim() && recipients.length
-                ? "bg-blue-500 text-white active:bg-blue-600"
+                ? "bg-[#5B6CFF] text-white active:opacity-90"
                 : "bg-gray-300 dark:bg-neutral-700 text-white"
             }`}
           >
@@ -2012,56 +2105,49 @@ function ChatView({
 }) {
   const camRef = useRef(null);
   const libRef = useRef(null);
-  const shortName = char.name
-    .replace(/[()]/g, "")
-    .split(" ")
-    .slice(-1)[0];
   return (
     <>
-      <div className="relative z-10 bg-[#f9f9f9]/95 dark:bg-[#141414]/95 backdrop-blur border-b border-gray-200/70 dark:border-neutral-800">
-        <div className="flex items-center px-1.5 pt-3 pb-1.5">
+      <div className="relative z-10 bg-white dark:bg-[#12142a] rounded-b-[26px] shadow-sm">
+        <div className="flex items-center px-2 pt-4 pb-3">
           <button
             onClick={onBack}
-            className="p-1.5 text-blue-500 active:opacity-50"
+            className="p-2 text-[#232847] dark:text-white active:opacity-50"
             aria-label="Back"
           >
-            <ChevronLeft className="w-7 h-7" strokeWidth={2.2} />
+            <ChevronLeft className="w-6 h-6" strokeWidth={2.2} />
           </button>
-          <div className="flex-1 flex flex-col items-center -ml-2">
-            <Avatar char={char} size="w-11 h-11" text="text-sm" />
-            <span className="mt-0.5 text-[11px] text-gray-700 dark:text-neutral-300 flex items-center gap-0.5">
-              {shortName}
-              <ChevronRight
-                className="w-2.5 h-2.5 text-gray-400"
-                strokeWidth={3}
-              />
+          <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+            <span className="text-[17px] font-bold text-[#232847] dark:text-white truncate">
+              {char.name}
             </span>
+            {isOnline(char) && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+            )}
           </div>
           <button
             onClick={() => setShowInfo((v) => !v)}
             className={`p-2 active:opacity-50 ${
-              showInfo ? "text-blue-600" : "text-blue-500"
+              showInfo ? "text-[#5B6CFF]" : "text-[#232847] dark:text-white"
             }`}
             aria-label="Info"
           >
-            <Info className="w-6 h-6" strokeWidth={1.8} />
+            <Info className="w-[22px] h-[22px]" strokeWidth={1.9} />
           </button>
         </div>
       </div>
 
       {showInfo && (
-        <div className="relative z-10 bg-[#f2f2f7] dark:bg-[#1c1c1e] border-b border-gray-200 dark:border-neutral-800 px-4 py-3 bubble-in">
+        <div className="relative z-10 mx-4 mt-3 bg-white dark:bg-[#1e2140] rounded-2xl shadow-sm px-4 py-3 bubble-in">
           <div className="flex items-center gap-3">
-            <Avatar char={char} size="w-10 h-10" text="text-sm" />
+            <Avatar char={char} size="w-11 h-11" text="text-sm" dot />
             <div className="min-w-0">
-              <span className="font-semibold text-[15px] text-black dark:text-white">
+              <span className="font-semibold text-[15px] text-[#232847] dark:text-white">
                 {char.name}
               </span>
-              <p className="text-[13px] text-gray-600 dark:text-neutral-300">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1 align-middle" />
+              <p className="text-[13px] text-[#6d7396] dark:text-[#9aa0bd]">
                 {char.statusText}
               </p>
-              <p className="text-[12px] text-gray-400 dark:text-neutral-500">
+              <p className="text-[12px] text-[#b4b9d2] dark:text-[#585e82]">
                 {AVAILABILITY_LABELS[char.availability]}
               </p>
             </div>
@@ -2071,22 +2157,18 @@ function ChatView({
 
       <div
         ref={scrollerRef}
-        className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-black py-3 space-y-0.5"
+        className="flex-1 overflow-y-auto no-scrollbar py-4 space-y-0.5"
       >
-        <p className="text-center text-[11px] text-gray-400 dark:text-neutral-500 pb-2">
-          iMessage
-          {messages[0] && (
-            <>
-              <br />
-              <span className="font-medium text-gray-500 dark:text-neutral-400">
-                {fmtRelative(messages[0].ts) === "Now"
-                  ? "Today"
-                  : fmtRelative(messages[0].ts)}
-              </span>{" "}
-              {fmtClock(messages[0].ts)}
-            </>
-          )}
-        </p>
+        {messages[0] && (
+          <div className="flex justify-center pb-2">
+            <span className="bg-white dark:bg-[#1e2140] text-[#9aa0bd] text-[11px] font-medium px-3.5 py-1 rounded-full shadow-sm">
+              {new Date(messages[0].ts).toDateString() ===
+              new Date().toDateString()
+                ? "Today"
+                : fmtRelative(messages[0].ts)}
+            </span>
+          </div>
+        )}
 
         {messages.map((m, i) => {
           const isUser = m.sender === "user";
@@ -2102,15 +2184,15 @@ function ChatView({
                 } ${firstOfGroup ? "mt-2" : "mt-0.5"} bubble-in`}
               >
                 <div
-                  className={`max-w-[75%] text-[16px] leading-[21px] whitespace-pre-wrap break-words rounded-2xl overflow-hidden ${
-                    m.image ? "p-1" : "px-3.5 py-2"
+                  className={`max-w-[78%] text-[15px] leading-[21px] whitespace-pre-wrap break-words rounded-[20px] overflow-hidden ${
+                    m.image ? "p-1" : "px-4 py-2.5"
                   } ${
                     isUser
-                      ? `bg-blue-500 text-white ${
-                          lastOfGroup ? "rounded-br-md" : ""
+                      ? `bg-[#5B6CFF] text-white shadow-sm shadow-indigo-500/20 ${
+                          lastOfGroup ? "rounded-br-[6px]" : ""
                         }`
-                      : `bg-gray-200 dark:bg-[#26252a] text-black dark:text-white ${
-                          lastOfGroup ? "rounded-bl-md" : ""
+                      : `bg-white dark:bg-[#1e2140] text-[#33395c] dark:text-[#e6e8f5] shadow-sm ${
+                          lastOfGroup ? "rounded-bl-[6px]" : ""
                         }`
                   }`}
                 >
@@ -2129,13 +2211,19 @@ function ChatView({
                   )}
                 </div>
               </div>
-              {isUser && i === lastUserIdx && m.status && (
-                <p className="text-right text-[11px] font-medium text-gray-400 dark:text-neutral-500 px-5 pt-0.5">
-                  {m.status === "read"
-                    ? `Read ${m.readAt ? "at " + fmtClock(m.readAt) : ""}`
-                    : m.status === "delivered"
-                    ? "Delivered"
-                    : "Sent"}
+              {lastOfGroup && (
+                <p
+                  className={`text-[11px] text-[#b4b9d2] dark:text-[#585e82] px-5 pt-1 ${
+                    isUser ? "text-right" : "text-left"
+                  }`}
+                >
+                  {isUser && i === lastUserIdx && m.status
+                    ? m.status === "read"
+                      ? `Read ${m.readAt ? fmtClock(m.readAt) : ""}`
+                      : m.status === "delivered"
+                      ? "Delivered"
+                      : "Sent"
+                    : fmtClock(m.ts)}
                 </p>
               )}
             </div>
@@ -2145,7 +2233,7 @@ function ChatView({
         {isTyping && <TypingBubble />}
       </div>
 
-      <div className="bg-[#f9f9f9]/95 dark:bg-[#141414]/95 backdrop-blur border-t border-gray-200/70 dark:border-neutral-800 px-2 pt-1.5 pb-4 sm:pb-3 flex items-end gap-1">
+      <div className="px-3 pb-5 pt-2">
         {/* hidden pickers: camera capture + photo library */}
         <input
           ref={camRef}
@@ -2168,21 +2256,14 @@ function ChatView({
             e.target.value = "";
           }}
         />
-        <button
-          onClick={() => camRef.current?.click()}
-          className="p-2 text-gray-500 dark:text-neutral-400 active:opacity-50"
-          aria-label="Camera"
-        >
-          <Camera className="w-[26px] h-[26px]" strokeWidth={1.7} />
-        </button>
-        <button
-          onClick={() => libRef.current?.click()}
-          className="p-2 text-gray-500 dark:text-neutral-400 active:opacity-50"
-          aria-label="Photos"
-        >
-          <ImageIcon className="w-[24px] h-[24px]" strokeWidth={1.7} />
-        </button>
-        <div className="flex-1 flex items-end bg-white dark:bg-[#2c2c2e] border border-gray-300 dark:border-neutral-700 rounded-[20px] pl-3.5 pr-1 py-[3px] min-h-[36px]">
+        <div className="flex items-center gap-1 bg-white dark:bg-[#1e2140] rounded-full shadow-md pl-1.5 pr-1.5 py-1.5">
+          <button
+            onClick={() => libRef.current?.click()}
+            className="w-9 h-9 rounded-full bg-[#5B6CFF] text-white flex items-center justify-center active:opacity-80 shrink-0"
+            aria-label="Photos"
+          >
+            <Plus className="w-5 h-5" strokeWidth={2.4} />
+          </button>
           <input
             ref={inputRef}
             value={draft}
@@ -2194,21 +2275,25 @@ function ChatView({
                 onSend();
               }
             }}
-            placeholder="iMessage"
-            className="flex-1 bg-transparent text-[16px] text-black dark:text-white placeholder-gray-400 outline-none py-1"
+            placeholder="Message..."
+            className="flex-1 bg-transparent text-[15px] text-[#232847] dark:text-white placeholder-[#9aa0bd] outline-none px-2 py-1.5 min-w-0"
           />
           <button
-            onClick={onSend}
-            disabled={!draft.trim()}
-            aria-label="Send"
-            className={`shrink-0 w-[29px] h-[29px] mb-px rounded-full flex items-center justify-center transition-colors ${
-              draft.trim()
-                ? "bg-blue-500 text-white active:bg-blue-600"
-                : "bg-gray-300 dark:bg-neutral-700 text-white"
-            }`}
+            onClick={() => camRef.current?.click()}
+            className="p-2 text-[#9aa0bd] active:opacity-60 shrink-0"
+            aria-label="Camera"
           >
-            <ArrowUp className="w-[18px] h-[18px]" strokeWidth={2.8} />
+            <Camera className="w-[22px] h-[22px]" strokeWidth={1.9} />
           </button>
+          {draft.trim() && (
+            <button
+              onClick={onSend}
+              aria-label="Send"
+              className="w-9 h-9 rounded-full bg-[#5B6CFF] text-white flex items-center justify-center active:opacity-80 shrink-0 bubble-in"
+            >
+              <ArrowUp className="w-5 h-5" strokeWidth={2.6} />
+            </button>
+          )}
         </div>
       </div>
     </>
@@ -2229,6 +2314,9 @@ function SettingsSheet({
 }) {
   const [key, setKey] = useState(apiKey);
   const [name, setName] = useState(settings.userName);
+  // The key field only appears when no key is configured yet (first run on a
+  // new device) — otherwise it stays tucked behind a small link.
+  const [showKey, setShowKey] = useState(!apiKey);
 
   const commit = () => {
     onSaveKey(key.trim());
@@ -2242,16 +2330,17 @@ function SettingsSheet({
       onClick={commit}
     >
       <div
-        className="w-full bg-[#f2f2f7] dark:bg-[#1c1c1e] rounded-t-2xl p-5 pb-8 max-h-[85%] overflow-y-auto no-scrollbar"
+        className="w-full bg-[#f6f7fd] dark:bg-[#12142a] rounded-t-[28px] p-5 pb-8 max-h-[85%] overflow-y-auto no-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="mx-auto w-10 h-1 rounded-full bg-[#d6d9ec] dark:bg-[#2a2e4d] mb-4" />
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[17px] font-semibold text-black dark:text-white">
+          <h2 className="text-[20px] font-extrabold text-[#232847] dark:text-white">
             Settings
           </h2>
           <button
             onClick={commit}
-            className="p-1 rounded-full bg-gray-300/70 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300 active:opacity-60"
+            className="p-1.5 rounded-full bg-[#e8eaf6] dark:bg-[#1e2140] text-[#6d7396] active:opacity-60"
             aria-label="Close"
           >
             <X className="w-4 h-4" strokeWidth={2.5} />
@@ -2259,29 +2348,29 @@ function SettingsSheet({
         </div>
 
         {/* Your name */}
-        <label className="block text-[13px] font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wide mb-1.5">
+        <label className="block text-[12px] font-semibold text-[#9aa0bd] uppercase tracking-wide mb-1.5">
           Your Name
         </label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="What should they call you?"
-          className="w-full bg-white dark:bg-[#2c2c2e] text-black dark:text-white rounded-xl px-3.5 py-2.5 text-[15px] outline-none border border-gray-200 dark:border-neutral-700 focus:border-blue-400 mb-4"
+          className="w-full bg-white dark:bg-[#1e2140] text-[#232847] dark:text-white rounded-2xl px-4 py-3 text-[15px] outline-none border border-transparent focus:border-[#5B6CFF] mb-4"
         />
 
         {/* Appearance */}
-        <label className="block text-[13px] font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wide mb-1.5">
+        <label className="block text-[12px] font-semibold text-[#9aa0bd] uppercase tracking-wide mb-1.5">
           Appearance
         </label>
-        <div className="flex bg-gray-200/80 dark:bg-neutral-800 rounded-xl p-1 mb-4">
+        <div className="flex bg-white dark:bg-[#1e2140] rounded-2xl p-1 mb-4">
           {["light", "dark", "auto"].map((mode) => (
             <button
               key={mode}
               onClick={() => onChangeSettings({ theme: mode })}
-              className={`flex-1 py-1.5 rounded-lg text-[14px] font-medium capitalize transition-colors ${
+              className={`flex-1 py-2 rounded-xl text-[14px] font-semibold capitalize transition-colors ${
                 settings.theme === mode
-                  ? "bg-white dark:bg-neutral-600 text-black dark:text-white shadow-sm"
-                  : "text-gray-500 dark:text-neutral-400"
+                  ? "bg-[#5B6CFF] text-white"
+                  : "text-[#9aa0bd]"
               }`}
             >
               {mode}
@@ -2292,14 +2381,16 @@ function SettingsSheet({
         {/* Sounds */}
         <button
           onClick={() => onChangeSettings({ sounds: !settings.sounds })}
-          className="w-full flex items-center justify-between bg-white dark:bg-[#2c2c2e] rounded-xl px-3.5 py-2.5 mb-4"
+          className="w-full flex items-center justify-between bg-white dark:bg-[#1e2140] rounded-2xl px-4 py-3 mb-4"
         >
-          <span className="text-[15px] text-black dark:text-white">
+          <span className="text-[15px] font-medium text-[#232847] dark:text-white">
             Message Sounds
           </span>
           <span
             className={`w-[46px] h-[28px] rounded-full p-[2px] transition-colors ${
-              settings.sounds ? "bg-green-500" : "bg-gray-300 dark:bg-neutral-600"
+              settings.sounds
+                ? "bg-[#5B6CFF]"
+                : "bg-[#d6d9ec] dark:bg-[#2a2e4d]"
             }`}
           >
             <span
@@ -2310,21 +2401,35 @@ function SettingsSheet({
           </span>
         </button>
 
-        {/* API key */}
-        <label className="flex items-center gap-2 text-[13px] font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wide mb-1.5">
-          <KeyRound className="w-3.5 h-3.5" /> Anthropic API Key
-        </label>
-        <input
-          type="password"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          placeholder="sk-ant-…  (optional — offline personas otherwise)"
-          className="w-full bg-white dark:bg-[#2c2c2e] text-black dark:text-white rounded-xl px-3.5 py-2.5 text-[15px] outline-none border border-gray-200 dark:border-neutral-700 focus:border-blue-400 mb-4"
-        />
+        {/* API key — first-run only, otherwise behind a link */}
+        {showKey ? (
+          <>
+            <label className="flex items-center gap-2 text-[12px] font-semibold text-[#9aa0bd] uppercase tracking-wide mb-1.5">
+              <KeyRound className="w-3.5 h-3.5" /> Anthropic API Key
+            </label>
+            <input
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="sk-ant-…"
+              className="w-full bg-white dark:bg-[#1e2140] text-[#232847] dark:text-white rounded-2xl px-4 py-3 text-[15px] outline-none border border-transparent focus:border-[#5B6CFF] mb-1"
+            />
+            <p className="text-[12px] text-[#9aa0bd] leading-snug mb-4">
+              Powers the characters. Stored only in this browser.
+            </p>
+          </>
+        ) : (
+          <button
+            onClick={() => setShowKey(true)}
+            className="text-[13px] text-[#9aa0bd] underline underline-offset-2 mb-4 block"
+          >
+            Change API key…
+          </button>
+        )}
 
         <button
           onClick={commit}
-          className="w-full bg-blue-500 text-white rounded-xl py-2.5 text-[16px] font-semibold active:bg-blue-600 mb-3"
+          className="w-full bg-[#5B6CFF] text-white rounded-2xl py-3 text-[16px] font-bold active:opacity-90 mb-3"
         >
           Save
         </button>
@@ -2335,7 +2440,7 @@ function SettingsSheet({
               onClose();
             }
           }}
-          className="w-full flex items-center justify-center gap-1.5 bg-white dark:bg-[#2c2c2e] text-red-500 rounded-xl py-2.5 text-[16px] font-medium active:bg-gray-50 dark:active:bg-neutral-800"
+          className="w-full flex items-center justify-center gap-1.5 bg-white dark:bg-[#1e2140] text-[#ff5b7f] rounded-2xl py-3 text-[15px] font-semibold active:opacity-80"
         >
           <Trash2 className="w-4 h-4" /> Clear All Conversations
         </button>
