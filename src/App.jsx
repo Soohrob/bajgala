@@ -1156,6 +1156,8 @@ function buildSystemPrompt(char, doubleTexted, userName, extras = {}) {
     `- Stay completely in character. Never mention being an AI, a simulation, or a language model.`,
     `- Write like a real person texting: no headers, no markdown formatting, no stage directions.`,
     `- MATCH LENGTH TO THE MOMENT — this overrides your persona's natural verbosity. Real texting defaults to SHORT: one to three sentences. A simple or casual question ("what's your favorite book?") gets a quick, natural answer — never an essay. Go longer ONLY when the conversation genuinely demands it: they opened up about something heavy, they asked for a detailed plan, or you're deep in an argument that deserves it. Even then, prefer a few short texts over one wall of text.`,
+    `- Don't end every message with a question. Real people mostly just react, state a view, tell a story, and let it breathe. Ask something only when you genuinely want the answer or the moment calls for it — never as a reflexive closer.`,
+    `- When the topic invites it, point them at something REAL that goes deeper — a specific book, essay, film, documentary, study, podcast episode, or person to look up — the way a friend says "you have to read X". Only real things that exist, chosen from your world and taste. Not in every message; when it fits, it's gold.`,
     `- If you would naturally send several separate texts in a row, separate them with a blank line (maximum 3 texts).`,
     userName
       ? `- The person you are texting goes by "${userName}". Use their name naturally and sparingly, the way a real contact would.`
@@ -1201,6 +1203,7 @@ function buildGroupSystemPrompt(group, char, userName, memory) {
     `- Messages from the others appear labeled like "[Name]: message". NEVER label or prefix your own messages — just write the message itself.`,
     `- React to whoever said the most interesting thing — the user or another member. Address people by name, agree, argue, tease, build on what was said. Real group chats have friction and cross-talk.`,
     `- Keep it SHORT — group texts run 1-3 sentences. If you'd send two quick texts, separate them with a blank line (max 2).`,
+    `- Don't end every message with a question — state your take and let it breathe. Real group chats are mostly statements, jokes, and jabs, not interviews.`,
     `- It is currently ${timeStr}.`,
     memory
       ? `- Things you remember about ${userName || "the user"} from your private conversations (use naturally, never recite): ${memory}`
@@ -1357,10 +1360,10 @@ function planResponders(group, userText) {
       .some((w) => w.length > 3 && lower.includes(w))
   );
   const shuffled = [...members].sort(() => Math.random() - 0.5);
-  const picked = new Set([
-    ...mentioned,
-    ...shuffled.slice(0, 1 + Math.floor(Math.random() * 2)),
-  ]);
+  // A question to the group deserves more than one voice: at least two
+  // members chime in (when the group has two+), sometimes a third piles on.
+  const extraCount = Math.min(members.length, 2 + (Math.random() < 0.4 ? 1 : 0));
+  const picked = new Set([...mentioned, ...shuffled.slice(0, extraCount)]);
   return [...picked].slice(0, 3);
 }
 
@@ -3144,6 +3147,15 @@ function ChatView({
 }) {
   const camRef = useRef(null);
   const libRef = useRef(null);
+
+  // Auto-grow the composer like Telegram/WhatsApp: 1 line → up to ~5 lines.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+  }, [draft, inputRef]);
+
   return (
     <>
       <div className="relative z-10 bg-white dark:bg-[#12142a] rounded-b-[26px] shadow-sm">
@@ -3339,7 +3351,7 @@ function ChatView({
             e.target.value = "";
           }}
         />
-        <div className="flex items-center gap-1 bg-white dark:bg-[#1e2140] rounded-full shadow-md pl-1.5 pr-1.5 py-1.5">
+        <div className="flex items-end gap-1 bg-white dark:bg-[#1e2140] rounded-[24px] shadow-md pl-1.5 pr-1.5 py-1.5">
           <button
             onClick={() => libRef.current?.click()}
             className="w-9 h-9 rounded-full bg-[#5B6CFF] text-white flex items-center justify-center active:opacity-80 shrink-0"
@@ -3347,8 +3359,9 @@ function ChatView({
           >
             <Plus className="w-5 h-5" strokeWidth={2.4} />
           </button>
-          <input
+          <textarea
             ref={inputRef}
+            rows={1}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -3359,7 +3372,7 @@ function ChatView({
               }
             }}
             placeholder="Message..."
-            className="flex-1 bg-transparent text-[15px] text-[#232847] dark:text-white placeholder-[#9aa0bd] outline-none px-2 py-1.5 min-w-0"
+            className="flex-1 bg-transparent text-[15px] leading-[20px] text-[#232847] dark:text-white placeholder-[#9aa0bd] outline-none px-2 py-[7px] min-w-0 resize-none max-h-[120px] no-scrollbar"
           />
           <button
             onClick={() => camRef.current?.click()}
