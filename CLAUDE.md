@@ -23,19 +23,23 @@ There are no tests and no linter. Verification is manual: build + exercise the U
 
 ### The friction engine (core of the product)
 
-Characters must never reply instantly. Every user send runs an asynchronous lifecycle per character: Sent → (1–3s) → Delivered → (2–5s × availability multiplier, time-of-day aware) → Read → LLM generation → typing indicator (duration = chars / `baseTypingSpeed` ± 2s) → reply bubbles. Key mechanics:
+Characters must never reply instantly. Every user send runs an asynchronous lifecycle per thread: Sent → (1–3s) → Delivered → (2–5s × availability multiplier, time-of-day aware) → Read → LLM generation → typing indicator (duration = chars / `baseTypingSpeed` ± 2s) → reply bubbles. Key mechanics:
 
-- **Timers** live in `timersRef` keyed by character id; `cycleRef` holds a per-character "cycle token" object.
+- **Timers** live in `timersRef` keyed by thread id (character id or `grp_*` group id); `cycleRef` holds a per-thread "cycle token" object.
 - **Double-texting**: a send while a cycle is in flight clears all timers, and the new cycle carries `doubleTexted: true`, which injects `[System Note: The user has double-texted you before you responded]` into the prompt. After any `await`, code compares `cycleRef.current[charId] !== cycleToken` to discard stale in-flight replies — preserve this guard when touching `beginReply`.
 - **Multi-bubble bursts**: replies split on blank lines (max 3 bubbles); characters with `burst: true` (Dostoyevsky, Sherlock) are prompted to use them.
-- On mount, threads whose last message is an unanswered user text get their lifecycle restarted (timers don't survive refresh).
+- On mount, threads whose last message is an unanswered user text get their lifecycle restarted (timers don't survive refresh) — this covers both 1:1 and group threads.
+- **Group chats**: threads with `grp_` ids reference a `groups` entry (`{id, name, members, createdAt}` in `bajgala_groups_v1`). A send plans 1–3 responders (`planResponders`: anyone name-dropped + random members) who reply **sequentially**, each seeing the full thread so they react to each other. Group history is mapped from each responder's POV: their own messages become `assistant` turns, everyone else's become labeled `user` turns (`[Name]: …`) — never end the mapped history on `assistant` (prefill 400s). The `typing` map holds `true` for 1:1 and the typing character's id for groups.
 
 ### LLM generation (`generateWithClaude`)
 
 - Calls the Anthropic API **directly from the browser** (`dangerouslyAllowBrowser: true`). Key resolution: localStorage (`bajgala_api_key`, set via Settings) → `VITE_ANTHROPIC_KEY` from `.env.local` (git-ignored; exists locally, NOT in the Pages build — users paste their key once per device).
 - Every request includes the `web_search_20260209` server tool with a `pause_turn` continuation loop. **Text blocks before the last search block are deliberately discarded** — they're "let me check" narration that breaks the persona illusion. The system prompt forbids assistant-style behavior (no reciting schedules, no mentioning searches, react as an insider).
 - **Vision**: user photos in the last 6 messages are sent as base64 image blocks; older ones degrade to `[sent a photo]` text to cap token cost.
-- On any API failure, `generateReply` silently falls back to canned in-character responses (`fallback` pools on each character). Every character must have `greeting`, `general[]`, and `doubleText` fallbacks — keep this when adding roster entries.
+- **Time-gap awareness**: gaps > 3h between exchanges are injected as a prompt note so characters react to silence in character.
+- **Long-term memory**: every ~12 messages per 1:1 thread, `maybeDistill` runs a background call that rewrites a ≤120-word facts file (`bajgala_memory_v1`), injected into all future prompts for that character (including group prompts). Fire-and-forget; failures are silent.
+- **Daily statuses**: once per day (`bajgala_status_v1`), one web-search-enabled call regenerates every character's status line as JSON; `statusMap` overlays `statusText` in the info panel and compose list.
+- On any API failure the app falls back to canned in-character responses (`fallback` pools) and surfaces it: an amber banner when no key is set, a transient toast when a call fails despite a key. Every character must have `greeting`, `general[]`, and `doubleText` fallbacks — keep this when adding roster entries.
 
 ### Character database
 
@@ -51,6 +55,7 @@ Everything is in localStorage under `bajgala_*` keys (conversations, seen timest
 - **Screen transitions**: thread list and chat are two absolutely-positioned panes translated inside an `overflow-hidden` stage. **Never use `scrollIntoView` for chat autoscroll** — it horizontally scrolls the stage and breaks navigation (past bug); pin via `scrollerRef.scrollTop = scrollHeight` instead.
 - **Swipe rows** (`ThreadRow`): dragging writes `style.transform` directly on the DOM node (zero React re-renders mid-drag), with velocity-based flick detection and rubber-band overdrag. State (`openSwipeId`) only changes on release. Keep drag handling imperative; routing it through React state causes jank and breaks under batched synthetic events.
 - **Sounds** are synthesized with Web Audio oscillators (no asset files) and gated by the Settings toggle.
+- **PWA**: `public/` holds the manifest, generated icons, and a stale-while-revalidate service worker (`sw.js`, registered only in prod builds via `import.meta.env.BASE_URL`). Bump the `CACHE` name in `sw.js` if a deploy must invalidate cached shells. Icons were generated by a dependency-free script (indigo bubble mark) — regenerate rather than hand-edit.
 
 ## Constraints & context
 

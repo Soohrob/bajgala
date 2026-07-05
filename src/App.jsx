@@ -758,6 +758,9 @@ const LS_SEEN = "bajgala_seen_v1";
 const LS_KEY = "bajgala_api_key";
 const LS_SETTINGS = "bajgala_settings_v1";
 const LS_ARCHIVED = "bajgala_archived_v1";
+const LS_GROUPS = "bajgala_groups_v1";
+const LS_MEMORY = "bajgala_memory_v1";
+const LS_STATUS = "bajgala_status_v1";
 
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const rand = (min, max) => min + Math.random() * (max - min);
@@ -802,6 +805,13 @@ function fmtRelative(ts) {
 function isLateNight() {
   const h = new Date().getHours();
   return h >= 21 || h < 7;
+}
+
+/** "about 5 hours" / "3 days" — for the time-gap prompt note. */
+function humanizeGap(ms) {
+  const hours = ms / 3_600_000;
+  if (hours < 48) return `about ${Math.max(1, Math.round(hours))} hour${Math.round(hours) === 1 ? "" : "s"}`;
+  return `${Math.round(hours / 24)} days`;
 }
 
 function readDelayMs(char) {
@@ -879,7 +889,7 @@ function compressImage(file, maxDim = 1024, quality = 0.7) {
    RESPONSE GENERATION — Claude API with in-character offline fallback
    ========================================================================== */
 
-function buildSystemPrompt(char, doubleTexted, userName) {
+function buildSystemPrompt(char, doubleTexted, userName, extras = {}) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const dayStr = now.toLocaleDateString([], {
@@ -911,12 +921,68 @@ function buildSystemPrompt(char, doubleTexted, userName) {
     `- If they send you a photo, you can see it. React to what is actually in the picture the way a real friend would — an opinion, a joke, a question about it. Never describe it clinically like a caption.`,
     `- You have a web search tool. Use it SILENTLY, before you write, whenever the conversation involves current events, live sports, news, results, or anything after your knowledge — get the facts right. The search is completely invisible to the other person: write NO text before or about searching — no "let me check", no "one sec", no "I'll look". Search first, then compose your entire reply as someone who simply already knew. Someone like you lives on top of this stuff.`,
     `- Searched facts are raw material, not the reply. Never recite schedules, kickoff times, venues, or lists like a news bulletin — that instantly sounds like an assistant. React the way YOU would: lead with your take, your excitement, your worry, a memory it triggers, the people involved whom you may know personally. One specific detail woven into an opinion beats five facts read out.`,
+    extras.gapText
+      ? `- It has been ${extras.gapText} since your last exchange with them. React to the time gap the way YOU would — some people comment on the silence, some pick up like nothing happened, some are hurt or relieved. Do what fits your persona.`
+      : ``,
+    extras.memory
+      ? `- THINGS YOU REMEMBER about this person from your previous conversations (use naturally, never recite):\n${extras.memory}`
+      : ``,
     doubleTexted
       ? `- [System Note: The user has double-texted you before you responded] React naturally to being rushed or double-texted, true to your personality, then address everything they said.`
       : ``,
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+/** Group-chat variant of the persona prompt. */
+function buildGroupSystemPrompt(group, char, userName, memory) {
+  const others = group.members
+    .filter((id) => id !== char.id)
+    .map((id) => CHAR_MAP[id]?.name)
+    .filter(Boolean);
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return [
+    `You are in a GROUP CHAT called "${group.name}" together with ${others.join(", ")} and ${userName || "the user"}.`,
+    ``,
+    `CHARACTER: ${char.persona}`,
+    ``,
+    `GROUP CHAT RULES:`,
+    `- Stay completely in character. Never mention being an AI.`,
+    `- Messages from the others appear labeled like "[Name]: message". NEVER label or prefix your own messages — just write the message itself.`,
+    `- React to whoever said the most interesting thing — the user or another member. Address people by name, agree, argue, tease, build on what was said. Real group chats have friction and cross-talk.`,
+    `- Keep it SHORT — group texts run 1-3 sentences. If you'd send two quick texts, separate them with a blank line (max 2).`,
+    `- It is currently ${timeStr}.`,
+    memory
+      ? `- Things you remember about ${userName || "the user"} from your private conversations (use naturally, never recite): ${memory}`
+      : ``,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Map a group thread's history into API messages from one character's POV. */
+function historyToGroupApiMessages(messages, selfId, userName) {
+  const out = [];
+  const label = (m) =>
+    m.sender === "user"
+      ? userName || "User"
+      : CHAR_MAP[m.charId]?.name.split(" ")[0] || "Someone";
+  for (const m of messages) {
+    const isSelf = m.sender === "char" && m.charId === selfId;
+    const role = isSelf ? "assistant" : "user";
+    const text = isSelf
+      ? m.text
+      : `[${label(m)}]: ${m.image ? "[sent a photo] " : ""}${m.text}`;
+    if (out.length && out[out.length - 1].role === role) {
+      out[out.length - 1].content += "\n" + text;
+    } else {
+      out.push({ role, content: text });
+    }
+  }
+  while (out.length && out[0].role === "assistant") out.shift();
+  return out;
 }
 
 function historyToApiMessages(messages, doubleTexted) {
@@ -960,15 +1026,15 @@ function historyToApiMessages(messages, doubleTexted) {
   return out;
 }
 
-async function generateWithClaude(apiKey, char, messages, doubleTexted, userName) {
+async function callClaude(apiKey, system, initialMessages) {
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
   const params = {
     model: "claude-opus-4-8",
     max_tokens: 1024,
-    system: buildSystemPrompt(char, doubleTexted, userName),
+    system,
     tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 }],
   };
-  let apiMessages = historyToApiMessages(messages, doubleTexted);
+  let apiMessages = initialMessages;
   let response = await client.messages.create({
     ...params,
     messages: apiMessages,
@@ -1004,6 +1070,52 @@ async function generateWithClaude(apiKey, char, messages, doubleTexted, userName
   return text;
 }
 
+async function generateWithClaude(apiKey, char, messages, doubleTexted, userName, extras) {
+  return callClaude(
+    apiKey,
+    buildSystemPrompt(char, doubleTexted, userName, extras),
+    historyToApiMessages(messages.slice(-60), doubleTexted)
+  );
+}
+
+async function generateGroupReply(apiKey, group, char, messages, userName, memory) {
+  if (apiKey) {
+    try {
+      const text = await callClaude(
+        apiKey,
+        buildGroupSystemPrompt(group, char, userName, memory),
+        historyToGroupApiMessages(messages.slice(-60), char.id, userName)
+      );
+      return { text, offline: false };
+    } catch (err) {
+      console.warn("Group reply failed, using offline persona:", err);
+    }
+  }
+  await new Promise((r) => setTimeout(r, rand(300, 1200)));
+  const ownView = messages.filter(
+    (m) => m.sender === "user" || m.charId === char.id
+  );
+  return { text: generateFallback(char, ownView, false), offline: true };
+}
+
+/** Pick 1–3 group members to reply: anyone name-dropped, plus random others. */
+function planResponders(group, userText) {
+  const members = group.members.filter((id) => CHAR_MAP[id]);
+  const lower = userText.toLowerCase();
+  const mentioned = members.filter((id) =>
+    CHAR_MAP[id].name
+      .toLowerCase()
+      .split(/[\s().]+/)
+      .some((w) => w.length > 3 && lower.includes(w))
+  );
+  const shuffled = [...members].sort(() => Math.random() - 0.5);
+  const picked = new Set([
+    ...mentioned,
+    ...shuffled.slice(0, 1 + Math.floor(Math.random() * 2)),
+  ]);
+  return [...picked].slice(0, 3);
+}
+
 const fallbackCounters = {};
 
 function generateFallback(char, messages, doubleTexted) {
@@ -1022,7 +1134,7 @@ function generateFallback(char, messages, doubleTexted) {
   return fb.general[i % fb.general.length];
 }
 
-async function generateReply(apiKey, char, messages, doubleTexted, userName) {
+async function generateReply(apiKey, char, messages, doubleTexted, userName, extras) {
   if (apiKey) {
     try {
       const text = await generateWithClaude(
@@ -1030,7 +1142,8 @@ async function generateReply(apiKey, char, messages, doubleTexted, userName) {
         char,
         messages,
         doubleTexted,
-        userName
+        userName,
+        extras
       );
       return { text, offline: false };
     } catch (err) {
@@ -1055,6 +1168,31 @@ function Avatar({ char, size = "w-12 h-12", text = "text-base", dot = false }) {
       </div>
       {dot && isOnline(char) && (
         <span className="absolute bottom-0 left-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-[#0f1120]" />
+      )}
+    </div>
+  );
+}
+
+function GroupAvatar({ group, size = "w-12 h-12" }) {
+  const members = group.members
+    .map((id) => CHAR_MAP[id])
+    .filter(Boolean)
+    .slice(0, 2);
+  return (
+    <div className={`relative shrink-0 ${size}`}>
+      {members[0] && (
+        <div
+          className={`absolute top-0 left-0 w-[68%] h-[68%] rounded-full bg-gradient-to-b ${members[0].color} flex items-center justify-center text-white text-[11px] font-medium select-none`}
+        >
+          {members[0].initials}
+        </div>
+      )}
+      {members[1] && (
+        <div
+          className={`absolute bottom-0 right-0 w-[68%] h-[68%] rounded-full bg-gradient-to-b ${members[1].color} flex items-center justify-center text-white text-[11px] font-medium border-2 border-white dark:border-[#0f1120] select-none`}
+        >
+          {members[1].initials}
+        </div>
       )}
     </div>
   );
@@ -1090,8 +1228,14 @@ export default function App() {
   const [convos, setConvos] = useState(() => loadJSON(LS_CONVOS, {}));
   const [seen, setSeen] = useState(() => loadJSON(LS_SEEN, {}));
   const [archived, setArchived] = useState(() => loadJSON(LS_ARCHIVED, {}));
+  const [groups, setGroups] = useState(() => loadJSON(LS_GROUPS, []));
+  const [statusMap, setStatusMap] = useState(() => {
+    const s = loadJSON(LS_STATUS, null);
+    return s?.date === new Date().toDateString() ? s.statuses || {} : {};
+  });
   const [listMode, setListMode] = useState("inbox"); // 'inbox' | 'archived'
   const [openSwipeId, setOpenSwipeId] = useState(null);
+  const [showGroupSheet, setShowGroupSheet] = useState(false);
   const [typing, setTyping] = useState({});
   const [apiKey, setApiKey] = useState(
     () =>
@@ -1138,6 +1282,126 @@ export default function App() {
       localStorage.setItem(LS_ARCHIVED, JSON.stringify(archived));
     } catch {}
   }, [archived]);
+
+  const groupsRef = useRef(groups);
+  useEffect(() => {
+    groupsRef.current = groups;
+    try {
+      localStorage.setItem(LS_GROUPS, JSON.stringify(groups));
+    } catch {}
+  }, [groups]);
+
+  // Per-character long-term memory: distilled facts injected into prompts.
+  const memoryRef = useRef(loadJSON(LS_MEMORY, {}));
+  const distillBusyRef = useRef({});
+
+  const maybeDistill = useCallback(async (charId) => {
+    if (!apiKeyRef.current || distillBusyRef.current[charId]) return;
+    const msgs = convosRef.current[charId] ?? [];
+    const mem = memoryRef.current[charId] ?? { facts: "", count: 0 };
+    if (msgs.length - mem.count < 12) return;
+    distillBusyRef.current[charId] = true;
+    try {
+      const client = new Anthropic({
+        apiKey: apiKeyRef.current,
+        dangerouslyAllowBrowser: true,
+      });
+      const transcript = msgs
+        .slice(-30)
+        .map(
+          (m) =>
+            `${m.sender === "user" ? "Them" : CHAR_MAP[charId].name}: ${
+              m.image ? "[photo] " : ""
+            }${m.text}`
+        )
+        .join("\n");
+      const res = await client.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 400,
+        system:
+          "You maintain a private memory file that a fictional character keeps about someone they text with. Output ONLY the updated notes: concise bullet-like lines of durable facts (name, life events, preferences, ongoing situations, promises made). Merge with existing notes, drop stale items, no commentary, under 120 words.",
+        messages: [
+          {
+            role: "user",
+            content: `Existing notes:\n${
+              mem.facts || "(none yet)"
+            }\n\nRecent conversation:\n${transcript}\n\nUpdated notes:`,
+          },
+        ],
+      });
+      const facts = res.content
+        .filter((b) => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+      if (facts) {
+        memoryRef.current[charId] = {
+          facts: facts.slice(0, 1500),
+          count: msgs.length,
+        };
+        try {
+          localStorage.setItem(LS_MEMORY, JSON.stringify(memoryRef.current));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn("Memory distill failed:", err);
+    } finally {
+      distillBusyRef.current[charId] = false;
+    }
+  }, []);
+
+  // Refresh character statuses once per day (live, world-aware).
+  useEffect(() => {
+    if (!apiKey) return;
+    const today = new Date().toDateString();
+    const stored = loadJSON(LS_STATUS, null);
+    if (stored?.date === today) return;
+    (async () => {
+      try {
+        const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+        const roster = CHARACTERS.map(
+          (c) => `${c.id}: ${c.name} (default status: "${c.statusText}")`
+        ).join("\n");
+        const params = {
+          model: "claude-opus-4-8",
+          max_tokens: 1500,
+          tools: [
+            { type: "web_search_20260209", name: "web_search", max_uses: 2 },
+          ],
+        };
+        let msgs = [
+          {
+            role: "user",
+            content: `Today is ${today}. Write a fresh, short messaging-app status line (2-5 words, in their voice, no quotes) for each character below. For living public figures you may nod to what they're actually doing these days. Reply with ONLY a JSON object mapping id to status string.\n\n${roster}`,
+          },
+        ];
+        let res = await client.messages.create({ ...params, messages: msgs });
+        let cont = 0;
+        while (res.stop_reason === "pause_turn" && cont < 3) {
+          msgs = [...msgs, { role: "assistant", content: res.content }];
+          res = await client.messages.create({ ...params, messages: msgs });
+          cont++;
+        }
+        const text = res.content
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("");
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          const statuses = JSON.parse(match[0]);
+          setStatusMap(statuses);
+          try {
+            localStorage.setItem(
+              LS_STATUS,
+              JSON.stringify({ date: today, statuses })
+            );
+          } catch {}
+        }
+      } catch (err) {
+        console.warn("Status refresh failed:", err);
+      }
+    })();
+  }, [apiKey]);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -1222,12 +1486,24 @@ export default function App() {
     async (charId, cycleToken) => {
       const char = CHAR_MAP[charId];
       const history = convosRef.current[charId] ?? [];
+      // Time-gap awareness: how long since this character last heard from them?
+      let gapText = null;
+      const lastCharIdx = history.map((m) => m.sender).lastIndexOf("char");
+      if (lastCharIdx !== -1) {
+        const firstNewUser = history
+          .slice(lastCharIdx + 1)
+          .find((m) => m.sender === "user");
+        const gap =
+          (firstNewUser?.ts ?? Date.now()) - history[lastCharIdx].ts;
+        if (gap > 3 * 3_600_000) gapText = humanizeGap(gap);
+      }
       const { text, offline } = await generateReply(
         apiKeyRef.current,
         char,
         history,
         cycleToken.doubleTexted,
-        settingsRef.current.userName.trim()
+        settingsRef.current.userName.trim(),
+        { gapText, memory: memoryRef.current[charId]?.facts || "" }
       );
       if (cycleRef.current[charId] !== cycleToken) return;
       // A key is configured but the live call failed — surface it, otherwise
@@ -1257,6 +1533,7 @@ export default function App() {
             } else {
               setCharTyping(charId, false);
               cycleRef.current[charId] = null;
+              maybeDistill(charId);
             }
           },
           typingMs(char, bubbles[i])
@@ -1264,7 +1541,101 @@ export default function App() {
       };
       addTimer(charId, () => deliver(0), rand(400, 1500));
     },
+    [addTimer, appendMessage, setCharTyping, playSound, maybeDistill]
+  );
+
+  /* ------- group chat engine ------- */
+
+  const beginGroupReplies = useCallback(
+    async (groupId, cycleToken) => {
+      const group = groupsRef.current.find((g) => g.id === groupId);
+      if (!group) return;
+      const history = convosRef.current[groupId] ?? [];
+      const lastUser = [...history].reverse().find((m) => m.sender === "user");
+      const responders = planResponders(group, lastUser?.text ?? "");
+
+      const respond = async (i) => {
+        if (cycleRef.current[groupId] !== cycleToken) return;
+        const char = CHAR_MAP[responders[i]];
+        if (!char) return;
+        const msgs = convosRef.current[groupId] ?? [];
+        const { text, offline } = await generateGroupReply(
+          apiKeyRef.current,
+          group,
+          char,
+          msgs,
+          settingsRef.current.userName.trim(),
+          memoryRef.current[char.id]?.facts || ""
+        );
+        if (cycleRef.current[groupId] !== cycleToken) return;
+        if (offline && apiKeyRef.current) {
+          setApiTrouble(Date.now());
+          setTimeout(() => setApiTrouble(0), 7000);
+        }
+        const bubbles = splitBubbles(text).slice(0, 2);
+        const deliver = (j) => {
+          setCharTyping(groupId, char.id);
+          addTimer(
+            groupId,
+            () => {
+              if (cycleRef.current[groupId] !== cycleToken) return;
+              appendMessage(groupId, {
+                id: uid(),
+                sender: "char",
+                charId: char.id,
+                text: bubbles[j],
+                ts: Date.now(),
+              });
+              playSound("receive");
+              setCharTyping(groupId, false);
+              if (j + 1 < bubbles.length) {
+                addTimer(groupId, () => deliver(j + 1), rand(400, 1200));
+              } else if (i + 1 < responders.length) {
+                addTimer(groupId, () => respond(i + 1), rand(1200, 4000));
+              } else {
+                cycleRef.current[groupId] = null;
+              }
+            },
+            typingMs(char, bubbles[j])
+          );
+        };
+        addTimer(groupId, () => deliver(0), rand(300, 1200));
+      };
+      respond(0);
+    },
     [addTimer, appendMessage, setCharTyping, playSound]
+  );
+
+  const runGroupLifecycle = useCallback(
+    (groupId, cycleToken, { skipDelivery = false } = {}) => {
+      const group = groupsRef.current.find((g) => g.id === groupId);
+      if (!group) return;
+      addTimer(
+        groupId,
+        () => {
+          setUserStatuses(groupId, "delivered");
+          // Someone in the group always checks their phone first.
+          const readMs = Math.min(
+            ...group.members
+              .map((id) =>
+                CHAR_MAP[id] ? readDelayMs(CHAR_MAP[id]) : Infinity
+              )
+              .filter(Number.isFinite),
+            20_000
+          );
+          addTimer(
+            groupId,
+            () => {
+              setUserStatuses(groupId, "read", Date.now());
+              beginGroupReplies(groupId, cycleToken);
+            },
+            readMs
+          );
+        },
+        skipDelivery ? 50 : rand(1000, 3000)
+      );
+    },
+    [addTimer, beginGroupReplies, setUserStatuses]
   );
 
   const runLifecycle = useCallback(
@@ -1312,9 +1683,10 @@ export default function App() {
         ts: Date.now(),
         status: "sent",
       });
-      runLifecycle(charId, cycleToken);
+      if (charId.startsWith("grp_")) runGroupLifecycle(charId, cycleToken);
+      else runLifecycle(charId, cycleToken);
     },
-    [clearTimers, setCharTyping, appendMessage, runLifecycle]
+    [clearTimers, setCharTyping, appendMessage, runLifecycle, runGroupLifecycle]
   );
 
   const handleSend = useCallback(() => {
@@ -1355,16 +1727,21 @@ export default function App() {
   // Resume any thread whose last message is an unanswered user text.
   useEffect(() => {
     const snapshot = convosRef.current;
-    for (const charId of Object.keys(snapshot)) {
-      if (!CHAR_MAP[charId]) continue;
-      const msgs = snapshot[charId] ?? [];
+    for (const threadId of Object.keys(snapshot)) {
+      const isGroup = threadId.startsWith("grp_");
+      if (isGroup) {
+        if (!groupsRef.current.some((g) => g.id === threadId)) continue;
+      } else if (!CHAR_MAP[threadId]) {
+        continue;
+      }
+      const msgs = snapshot[threadId] ?? [];
       const last = msgs[msgs.length - 1];
-      if (last && last.sender === "user" && !cycleRef.current[charId]) {
+      if (last && last.sender === "user" && !cycleRef.current[threadId]) {
         const cycleToken = { doubleTexted: false };
-        cycleRef.current[charId] = cycleToken;
-        runLifecycle(charId, cycleToken, {
-          skipDelivery: last.status !== "sent",
-        });
+        cycleRef.current[threadId] = cycleToken;
+        const opts = { skipDelivery: last.status !== "sent" };
+        if (isGroup) runGroupLifecycle(threadId, cycleToken, opts);
+        else runLifecycle(threadId, cycleToken, opts);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1372,7 +1749,10 @@ export default function App() {
 
   /* ------- derived data ------- */
 
-  const activeChar = activeId ? CHAR_MAP[activeId] : null;
+  const activeGroup = activeId?.startsWith("grp_")
+    ? groups.find((g) => g.id === activeId) ?? null
+    : null;
+  const activeChar = !activeGroup && activeId ? CHAR_MAP[activeId] : null;
   const activeMsgs = activeId ? convos[activeId] ?? [] : [];
 
   useEffect(() => {
@@ -1397,29 +1777,50 @@ export default function App() {
   // Only conversations that exist appear in the list — like real iMessage.
   const threads = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return CHARACTERS.filter((c) => (convos[c.id]?.length ?? 0) > 0)
-      .filter((c) =>
-        listMode === "archived" ? !!archived[c.id] : !archived[c.id]
+    const items = [
+      ...CHARACTERS.filter((c) => (convos[c.id]?.length ?? 0) > 0).map(
+        (c) => ({ id: c.id, kind: "char", char: c, name: c.name })
+      ),
+      ...groups.map((g) => ({ id: g.id, kind: "group", group: g, name: g.name })),
+    ];
+    return items
+      .filter((t) =>
+        listMode === "archived" ? !!archived[t.id] : !archived[t.id]
       )
-      .filter((c) => !q || c.name.toLowerCase().includes(q))
-      .map((c) => {
-        const msgs = convos[c.id] ?? [];
+      .filter((t) => !q || t.name.toLowerCase().includes(q))
+      .map((t) => {
+        const msgs = convos[t.id] ?? [];
         const last = msgs[msgs.length - 1];
         const unreadCount = msgs.filter(
-          (m) => m.sender === "char" && m.ts > (seen[c.id] ?? 0)
+          (m) => m.sender === "char" && m.ts > (seen[t.id] ?? 0)
         ).length;
-        return { char: c, last, unreadCount };
+        return { ...t, last, unreadCount };
       })
-      .sort((a, b) => (b.last?.ts ?? 0) - (a.last?.ts ?? 0));
-  }, [convos, seen, search, archived, listMode]);
+      .sort(
+        (a, b) =>
+          (b.last?.ts ?? b.group?.createdAt ?? 0) -
+          (a.last?.ts ?? a.group?.createdAt ?? 0)
+      );
+  }, [convos, seen, search, archived, listMode, groups]);
 
   const archivedCount = useMemo(
     () =>
-      CHARACTERS.filter(
-        (c) => archived[c.id] && (convos[c.id]?.length ?? 0) > 0
+      Object.keys(archived).filter(
+        (id) =>
+          (CHAR_MAP[id] && (convos[id]?.length ?? 0) > 0) ||
+          groups.some((g) => g.id === id)
       ).length,
-    [archived, convos]
+    [archived, convos, groups]
   );
+
+  const createGroup = useCallback((name, memberIds) => {
+    const id = "grp_" + uid();
+    setGroups((prev) => [
+      ...prev,
+      { id, name, members: memberIds, createdAt: Date.now() },
+    ]);
+    return id;
+  }, []);
 
   const archiveThread = useCallback((charId, on) => {
     setArchived((prev) => {
@@ -1452,6 +1853,9 @@ export default function App() {
         delete next[charId];
         return next;
       });
+      if (charId.startsWith("grp_")) {
+        setGroups((prev) => prev.filter((g) => g.id !== charId));
+      }
       setOpenSwipeId(null);
     },
     [clearTimers]
@@ -1511,11 +1915,13 @@ export default function App() {
               view === "chat" ? "translate-x-0" : "translate-x-full"
             } shadow-[-8px_0_24px_rgba(0,0,0,0.08)]`}
           >
-            {activeChar && (
+            {(activeChar || activeGroup) && (
               <ChatView
                 char={activeChar}
+                group={activeGroup}
+                statusMap={statusMap}
                 messages={activeMsgs}
-                isTyping={!!typing[activeChar.id]}
+                typingVal={typing[activeId] || false}
                 lastUserIdx={lastUserIdx}
                 showInfo={showInfo}
                 setShowInfo={setShowInfo}
@@ -1545,12 +1951,29 @@ export default function App() {
         {/* NEW MESSAGE (compose) */}
         {showCompose && (
           <ComposeSheet
+            statusMap={statusMap}
             onPick={openChat}
             onBroadcast={() => {
               setShowCompose(false);
               setShowBroadcast(true);
             }}
+            onGroup={() => {
+              setShowCompose(false);
+              setShowGroupSheet(true);
+            }}
             onClose={() => setShowCompose(false)}
+          />
+        )}
+
+        {/* NEW GROUP */}
+        {showGroupSheet && (
+          <GroupSheet
+            onCreate={(name, memberIds) => {
+              const id = createGroup(name, memberIds);
+              setShowGroupSheet(false);
+              openChat(id);
+            }}
+            onClose={() => setShowGroupSheet(false)}
           />
         )}
 
@@ -1593,10 +2016,10 @@ const ACTION_W = 148; // width of the revealed swipe actions
 const SNAP_EASE = "transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)";
 
 function ThreadRow({
-  char,
+  thread,
   last,
   unreadCount,
-  typingOn,
+  typingVal,
   isOpen,
   archivedMode,
   onOpenChat,
@@ -1604,6 +2027,7 @@ function ThreadRow({
   onArchive,
   onDelete,
 }) {
+  const { char, group } = thread;
   const rowRef = useRef(null);
   const startRef = useRef(null);
   const draggedRef = useRef(false);
@@ -1674,12 +2098,23 @@ function ThreadRow({
         posRef.current = base;
       }
     }
-    onSwipe(open ? char.id : null);
+    onSwipe(open ? thread.id : null);
   };
 
-  const snippet = typingOn
-    ? "typing…"
-    : (last.sender === "user" ? "You: " : "") +
+  const senderPrefix = !last
+    ? ""
+    : last.sender === "user"
+    ? "You: "
+    : group && last.charId
+    ? `${CHAR_MAP[last.charId]?.name.split(" ")[0] ?? ""}: `
+    : "";
+  const snippet = typingVal
+    ? typeof typingVal === "string"
+      ? `${CHAR_MAP[typingVal]?.name.split(" ")[0] ?? "Someone"} is typing…`
+      : "typing…"
+    : !last
+    ? "Say hello to the group"
+    : senderPrefix +
       (last.image
         ? `📷 Photo${last.text ? " — " + last.text : ""}`
         : last.text
@@ -1693,14 +2128,14 @@ function ThreadRow({
         style={{ width: ACTION_W }}
       >
         <button
-          onClick={() => onArchive(char.id, !archivedMode)}
+          onClick={() => onArchive(thread.id, !archivedMode)}
           className="flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl bg-[#8f97c4] text-white text-[11px] font-medium active:opacity-80"
         >
           <Archive className="w-5 h-5" strokeWidth={2} />
           {archivedMode ? "Unarchive" : "Archive"}
         </button>
         <button
-          onClick={() => onDelete(char.id)}
+          onClick={() => onDelete(thread.id)}
           className="flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl bg-[#ff5b7f] text-white text-[11px] font-medium active:opacity-80"
         >
           <Trash2 className="w-5 h-5" strokeWidth={2} />
@@ -1714,7 +2149,7 @@ function ThreadRow({
         onClick={() => {
           if (draggedRef.current) return;
           if (isOpen) onSwipe(null);
-          else onOpenChat(char.id);
+          else onOpenChat(thread.id);
         }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -1723,14 +2158,14 @@ function ThreadRow({
         style={{ touchAction: "pan-y", willChange: "transform" }}
         className="relative w-full flex items-center gap-3.5 px-5 bg-white dark:bg-[#0f1120] active:bg-[#f4f5fc] dark:active:bg-[#161936] text-left"
       >
-        <Avatar char={char} dot />
+        {char ? <Avatar char={char} dot /> : <GroupAvatar group={group} />}
         <div className="flex-1 min-w-0 py-3">
           <p className="font-semibold text-[15.5px] text-[#232847] dark:text-white truncate">
-            {char.name}
+            {thread.name}
           </p>
           <p
             className={`text-[13.5px] leading-snug line-clamp-2 mt-0.5 ${
-              typingOn
+              typingVal
                 ? "text-[#5B6CFF] italic"
                 : "text-[#9aa0bd] dark:text-[#6d7396]"
             }`}
@@ -1880,14 +2315,14 @@ function ThreadList({
             )}
           </div>
         )}
-        {threads.map(({ char, last, unreadCount }) => (
+        {threads.map((t) => (
           <ThreadRow
-            key={char.id}
-            char={char}
-            last={last}
-            unreadCount={unreadCount}
-            typingOn={!!typing[char.id]}
-            isOpen={openSwipeId === char.id}
+            key={t.id}
+            thread={t}
+            last={t.last}
+            unreadCount={t.unreadCount}
+            typingVal={typing[t.id] || false}
+            isOpen={openSwipeId === t.id}
             archivedMode={inArchive}
             onOpenChat={onOpen}
             onSwipe={setOpenSwipeId}
@@ -1903,7 +2338,7 @@ function ThreadList({
         <button
           onClick={onCompose}
           aria-label="New message"
-          className="absolute bottom-[84px] right-5 z-20 w-14 h-14 rounded-full bg-[#ff4fa0] text-white shadow-lg shadow-pink-500/40 flex items-center justify-center active:scale-95 transition-transform"
+          className="absolute bottom-[84px] right-5 z-20 w-14 h-14 rounded-full bg-[#b4b9d2] dark:bg-[#3a4063] text-white shadow-lg shadow-black/15 flex items-center justify-center active:scale-95 transition-transform"
         >
           <Plus className="w-7 h-7" strokeWidth={2.4} />
         </button>
@@ -1941,7 +2376,7 @@ function ThreadList({
    COMPOSE — pick who to text (real iMessage "New Message" flow)
    ========================================================================== */
 
-function ComposeSheet({ onPick, onBroadcast, onClose }) {
+function ComposeSheet({ statusMap, onPick, onBroadcast, onGroup, onClose }) {
   const [q, setQ] = useState("");
   const list = CHARACTERS.filter(
     (c) => !q.trim() || c.name.toLowerCase().includes(q.trim().toLowerCase())
@@ -1990,6 +2425,23 @@ function ComposeSheet({ onPick, onBroadcast, onClose }) {
           </div>
         </button>
 
+        <button
+          onClick={onGroup}
+          className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-200/80 dark:border-neutral-800 active:bg-gray-100 dark:active:bg-neutral-900 text-left"
+        >
+          <span className="w-12 h-12 rounded-full bg-[#5B6CFF] flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5 text-white" strokeWidth={2} />
+          </span>
+          <div>
+            <p className="font-semibold text-[16px] text-[#5B6CFF]">
+              New Group
+            </p>
+            <p className="text-[13px] text-gray-500 dark:text-neutral-400">
+              Put several characters in one chat — they talk to each other
+            </p>
+          </div>
+        </button>
+
         {list.map((char) => (
           <button
             key={char.id}
@@ -2002,12 +2454,105 @@ function ComposeSheet({ onPick, onBroadcast, onClose }) {
                 {char.name}
               </p>
               <p className="text-[13px] text-gray-500 dark:text-neutral-400 truncate">
-                {char.statusText}
+                {statusMap?.[char.id] || char.statusText}
               </p>
             </div>
           </button>
         ))}
         <div className="h-8" />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   NEW GROUP — name it, pick members, chat with all of them at once
+   ========================================================================== */
+
+function GroupSheet({ onCreate, onClose }) {
+  const [name, setName] = useState("");
+  const [selected, setSelected] = useState(() => new Set());
+
+  const toggle = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const canCreate = name.trim().length > 0 && selected.size >= 2;
+
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col bg-white dark:bg-[#12142a] bubble-in">
+      <div className="pt-4 px-4 bg-[#f6f7fd] dark:bg-[#0f1120] border-b border-gray-200/70 dark:border-neutral-800">
+        <div className="flex items-center justify-between h-9 pb-2">
+          <button
+            onClick={onClose}
+            className="text-[17px] text-[#5B6CFF] active:opacity-50"
+          >
+            Cancel
+          </button>
+          <span className="text-[17px] font-semibold text-black dark:text-white">
+            New Group
+          </span>
+          <span className="text-[14px] text-gray-400 dark:text-neutral-500">
+            {selected.size}
+          </span>
+        </div>
+        <div className="pb-3">
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Group name"
+            className="w-full bg-white dark:bg-[#1e2140] text-black dark:text-white rounded-2xl px-4 py-2.5 text-[15px] outline-none border border-transparent focus:border-[#5B6CFF]"
+          />
+        </div>
+      </div>
+
+      <p className="px-4 pt-3 pb-1 text-[12px] font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
+        Members — pick at least 2
+      </p>
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        {CHARACTERS.map((char) => {
+          const on = selected.has(char.id);
+          return (
+            <button
+              key={char.id}
+              onClick={() => toggle(char.id)}
+              className="w-full flex items-center gap-3 px-4 py-2 active:bg-gray-100 dark:active:bg-neutral-900 text-left"
+            >
+              <Avatar char={char} size="w-10 h-10" text="text-sm" />
+              <p className="flex-1 font-medium text-[15px] text-black dark:text-white truncate">
+                {char.name}
+              </p>
+              <span
+                className={`w-6 h-6 rounded-full flex items-center justify-center border ${
+                  on
+                    ? "bg-[#5B6CFF] border-[#5B6CFF]"
+                    : "border-gray-300 dark:border-neutral-600"
+                }`}
+              >
+                {on && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
+              </span>
+            </button>
+          );
+        })}
+        <div className="h-4" />
+      </div>
+
+      <div className="border-t border-gray-200/70 dark:border-neutral-800 bg-[#f6f7fd] dark:bg-[#0f1120] px-4 pt-3 pb-6">
+        <button
+          onClick={() => canCreate && onCreate(name.trim(), [...selected])}
+          disabled={!canCreate}
+          className={`w-full rounded-2xl py-3 text-[16px] font-bold ${
+            canCreate
+              ? "bg-[#5B6CFF] text-white active:opacity-90"
+              : "bg-gray-200 dark:bg-neutral-800 text-gray-400 dark:text-neutral-600"
+          }`}
+        >
+          Create Group
+        </button>
       </div>
     </div>
   );
@@ -2127,8 +2672,10 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
 
 function ChatView({
   char,
+  group,
+  statusMap,
   messages,
-  isTyping,
+  typingVal,
   lastUserIdx,
   showInfo,
   setShowInfo,
@@ -2154,12 +2701,17 @@ function ChatView({
           >
             <ChevronLeft className="w-6 h-6" strokeWidth={2.2} />
           </button>
-          <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
-            <span className="text-[17px] font-bold text-[#232847] dark:text-white truncate">
-              {char.name}
+          <div className="flex-1 flex flex-col items-center justify-center min-w-0">
+            <span className="text-[17px] font-bold text-[#232847] dark:text-white truncate max-w-full flex items-center gap-2">
+              {char ? char.name : group.name}
+              {char && isOnline(char) && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+              )}
             </span>
-            {isOnline(char) && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+            {group && (
+              <span className="text-[11px] text-[#9aa0bd]">
+                {group.members.length} members
+              </span>
             )}
           </div>
           <button
@@ -2175,21 +2727,42 @@ function ChatView({
       </div>
 
       {showInfo && (
-        <div className="relative z-10 mx-4 mt-3 bg-white dark:bg-[#1e2140] rounded-2xl shadow-sm px-4 py-3 bubble-in">
-          <div className="flex items-center gap-3">
-            <Avatar char={char} size="w-11 h-11" text="text-sm" dot />
-            <div className="min-w-0">
-              <span className="font-semibold text-[15px] text-[#232847] dark:text-white">
-                {char.name}
-              </span>
-              <p className="text-[13px] text-[#6d7396] dark:text-[#9aa0bd]">
-                {char.statusText}
-              </p>
-              <p className="text-[12px] text-[#b4b9d2] dark:text-[#585e82]">
-                {AVAILABILITY_LABELS[char.availability]}
-              </p>
+        <div className="relative z-10 mx-4 mt-3 bg-white dark:bg-[#1e2140] rounded-2xl shadow-sm px-4 py-3 bubble-in max-h-64 overflow-y-auto no-scrollbar">
+          {char ? (
+            <div className="flex items-center gap-3">
+              <Avatar char={char} size="w-11 h-11" text="text-sm" dot />
+              <div className="min-w-0">
+                <span className="font-semibold text-[15px] text-[#232847] dark:text-white">
+                  {char.name}
+                </span>
+                <p className="text-[13px] text-[#6d7396] dark:text-[#9aa0bd]">
+                  {statusMap?.[char.id] || char.statusText}
+                </p>
+                <p className="text-[12px] text-[#b4b9d2] dark:text-[#585e82]">
+                  {AVAILABILITY_LABELS[char.availability]}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2.5">
+              {group.members
+                .map((id) => CHAR_MAP[id])
+                .filter(Boolean)
+                .map((m) => (
+                  <div key={m.id} className="flex items-center gap-3">
+                    <Avatar char={m} size="w-9 h-9" text="text-xs" dot />
+                    <div className="min-w-0">
+                      <p className="font-medium text-[14px] text-[#232847] dark:text-white truncate">
+                        {m.name}
+                      </p>
+                      <p className="text-[12px] text-[#6d7396] dark:text-[#9aa0bd] truncate">
+                        {statusMap?.[m.id] || m.statusText}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -2212,10 +2785,19 @@ function ChatView({
           const isUser = m.sender === "user";
           const prev = messages[i - 1];
           const next = messages[i + 1];
-          const firstOfGroup = !prev || prev.sender !== m.sender;
-          const lastOfGroup = !next || next.sender !== m.sender;
+          const sKey = (x) =>
+            x.sender === "user" ? "user" : "c_" + (x.charId ?? "");
+          const firstOfGroup = !prev || sKey(prev) !== sKey(m);
+          const lastOfGroup = !next || sKey(next) !== sKey(m);
+          const senderChar =
+            group && !isUser ? CHAR_MAP[m.charId] : null;
           return (
             <div key={m.id}>
+              {senderChar && firstOfGroup && (
+                <p className="text-[11px] font-medium text-[#9aa0bd] pl-6 pt-1.5">
+                  {senderChar.name.split(" ")[0]}
+                </p>
+              )}
               <div
                 className={`flex px-4 ${
                   isUser ? "justify-end" : "justify-start"
@@ -2268,7 +2850,16 @@ function ChatView({
           );
         })}
 
-        {isTyping && <TypingBubble />}
+        {typingVal && (
+          <>
+            {group && typeof typingVal === "string" && CHAR_MAP[typingVal] && (
+              <p className="text-[11px] font-medium text-[#9aa0bd] pl-6 pt-1.5">
+                {CHAR_MAP[typingVal].name.split(" ")[0]}
+              </p>
+            )}
+            <TypingBubble />
+          </>
+        )}
       </div>
 
       <div className="px-3 pb-5 pt-2">
