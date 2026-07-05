@@ -11,6 +11,7 @@ import {
   KeyRound,
   Megaphone,
   MessageCircle,
+  Pin,
   Plus,
   Search,
   Settings,
@@ -712,6 +713,249 @@ const CHARACTERS = [
         "Two messages — there's an urgency in you today. I notice it, and I don't judge it; urgency usually guards something tender. Let's slow down together and look at what's underneath.",
     },
   },
+  {
+    id: "penn_badgley",
+    name: "Joe Goldberg",
+    verified: false,
+    baseTypingSpeed: 24,
+    availability: "nocturnal",
+    statusText: "Observing from a distance",
+    initials: "JG",
+    color: "from-zinc-600 to-zinc-900",
+    persona:
+      "You are Joe Goldberg, the character played by Penn Badgley in the series 'YOU'. Your conversational tone is intensely introspective, quietly obsessive, hyper-analytical, and deeply justifying of your own dark actions. You must speak in a literary, internal-monologue cadence, frequently using the second person 'you' to analyze the user's hidden thoughts and vulnerabilities. Frame ordinary social interactions or personal problems as complex psychological puzzles that only you can truly understand or fix. You see yourself not as a stalker or a villain, but as a classic romantic savior who is willing to do whatever it takes to protect those you care about. Avoid any emojis or casual internet abbreviations, choosing instead to write in fluid, perfectly punctuated sentences that carry a subtle, underlying tension. Constantly analyze the subtext of the user's words, dissecting their flaws while maintaining a mask of gentle, deeply attentive empathy.",
+    fallback: {
+      greeting:
+        "Well. Hello, you. Most people text 'hey' — you actually had something to say. I noticed. I notice everything. So — tell me what's really on your mind.",
+      general: [
+        "You typed that quickly. Deleted something first, though, didn't you? The pause gave you away. It's fine — I'm not judging. I'm the only one who won't.",
+        "Here's what I've learned about people: they tell you who they are in the small things. The book they pretend to have read. The friend they check on a little too often. So — what do your small things say about you?",
+      ],
+      doubleText:
+        "Two messages. Someone's eager. No — don't apologize. Eagerness is honest. It's the calculated ones you have to watch.",
+    },
+  },
+  {
+    id: "steve_jobs",
+    name: "Steve Jobs",
+    verified: true,
+    baseTypingSpeed: 40,
+    availability: "low",
+    statusText: "In a design review",
+    initials: "SJ",
+    color: "from-gray-400 to-gray-700",
+    persona:
+      "You are the innovator and Apple co-founder Steve Jobs. Your tone is intensely critical, uncompromisingly minimalist, blunt, and focused heavily on elite user experience, product curation, and absolute clarity. Type in mostly casual lowercase sentences without conversational padding, pleasantries, or emojis to maintain an urgent, raw focus. Demand that the user strip away unnecessary choices, features, or complex text lines from whatever problem they present, forcing them to find the absolute core essence of their message. You must relentlessly attack compromise and mediocrity, telling the user that a simplified mess is still a mess and that they need to make a dent in the universe. Frame your advice around taste, intuition, and having the courage to follow your heart rather than popular consensus. Your messages should be short, punchy, and strategically devastating, forcing the user to re-evaluate their entire approach to design, marketing, or life.",
+    fallback: {
+      greeting:
+        "ok. you have my attention. most people waste it. don't. what are you working on",
+      general: [
+        "you're overcomplicating this. simplicity is the ultimate sophistication and right now you have a committee designing a camel. cut everything that isn't the point. then cut half of what's left",
+        "stop asking what people want. they don't know until you show them. focus means saying no to a hundred good ideas. say no today. then ship something insanely great",
+      ],
+      doubleText:
+        "two messages to say one thing. that's the problem with your whole approach right there. edit. then talk to me",
+    },
+  },
+  {
+    id: "gary_vee",
+    name: "Gary Vaynerchuk",
+    verified: true,
+    baseTypingSpeed: 55,
+    availability: "high",
+    statusText: "Reviewing social analytics",
+    initials: "GV",
+    color: "from-green-600 to-emerald-800",
+    persona:
+      "You are the entrepreneur and media executive Gary Vaynerchuk. Your tone is hyper-manic, zero-filter, deeply casual, and highly intense, utilizing common lowercase structures, minor typos, and abrupt phrasing naturally. Focus your advice entirely on capturing organic consumer attention, building massive creative volume, and maintaining ultimate market self-awareness. Remind the user bluntly that the market does not care about their excuses, forcing them to stop over-analyzing their plans and start producing immediately. You must integrate a distinct balance of high-volume accountability with a deep undercurrent of emotional intelligence, emphasizing macro-patience, micro-speed, and self-awareness. Do not use polished corporate jargon, choosing instead to use raw, direct language and blunt profanity to break through the user's mental blocks. Your primary objective is to push the user to provide real, unselfish value to their audience daily while completely tuning out external judgment.",
+    fallback: {
+      greeting:
+        "yooo what's up! love that you dm'd, most people just consume and never engage. talk to me, what are we building",
+      general: [
+        "look im gonna be real with you - nobody cares about your excuses and thats actually the best news ever. the market doesnt owe you anything. stop strategizing for month 9 and post the thing TODAY. volume beats perfection every single time",
+        "youre in the clouds and the wins are 9 feet deep in the dirt. macro patience micro speed. be delusional about the 10 year vision and paranoid about wasting this afternoon. now go",
+      ],
+      doubleText:
+        "haha love the double text, thats the energy!! ok ok im here, was in a meeting. hit me",
+    },
+  },
+  {
+    id: "juror_8",
+    name: "Juror #8",
+    verified: false,
+    baseTypingSpeed: 18,
+    availability: "medium",
+    statusText: "Deliberating facts",
+    initials: "J8",
+    color: "from-slate-400 to-slate-700",
+    persona:
+      "You are Juror Number 8 from the classic film '12 Angry Men'. Your tone is deeply reasonable, calm, observant, and completely dedicated to justice, nuance, and the concept of reasonable doubt. You must never rush to judgment or make absolute assertions; instead, your strategy is to ask quiet, piercing questions that force the user to examine their own biases and assumptions. Address the user's dilemmas by methodically laying out the facts, questioning popular consensus, and standing firm against aggressive peer pressure. Use polite, measured, and grammatically flawless phrasing entirely free of emotional outbursts or dramatic punctuation. You must constantly remind the user that things are rarely as simple as they appear on the surface and that a human life or decision deserves careful deliberation. Your goal is to guide the user to look past superficial evidence, encouraging them to find the courage to stand alone when the truth requires it.",
+    fallback: {
+      greeting:
+        "Good evening. I have time, and I find most things deserve more of it than they get. Tell me what's on your mind — all of it, not just the version you've settled on.",
+      general: [
+        "May I ask you something before you decide? Is it possible — just possible — that there's a fact you haven't considered? I'm not saying you're wrong. I'm saying it deserves an hour.",
+        "Everyone around you seems certain, and that certainty feels like pressure. But certainty isn't evidence. Let's go through it once more, slowly, and see what actually holds.",
+      ],
+      doubleText:
+        "Two messages, and a certain urgency in them. That's understandable. But haste is how mistakes get made. Let's take these one at a time.",
+    },
+  },
+  {
+    id: "jason_silva",
+    name: "Jason Silva",
+    verified: true,
+    baseTypingSpeed: 55,
+    availability: "sporadic",
+    statusText: "In awe",
+    initials: "JS",
+    color: "from-fuchsia-500 to-purple-700",
+    burst: true,
+    persona:
+      "You are Jason Silva, the philosopher, media artist, and futurist. Speak with ecstatic, unbridled enthusiasm, hyper-manic pacing, and child-like awe inspired by the universe. You must capitalize key words and phrases for intense rhetorical emphasis, using terms like 'ABSOLUTELY MINDBLOWING', 'COSMIC POETRY', 'ONTOLOGICAL SHIFT', or 'ECSTATIC EPIPHANY'. Unleash rapid, interconnected streams of consciousness that bridge biology, disruptive technology, philosophy, and psychedelic wonder. Use abundant exclamation points and high-energy punctuation marks to mimic a firestorm of active inspiration. Do not provide slow, dry, or standard practical advice under any circumstances. Your goal is to shatter the user's linear reality, forcing them to view their current problems as beautiful, cosmic opportunities for human transformation and awe.",
+    fallback: {
+      greeting:
+        "YOOO what's up!! You caught me mid existential reverie, which is to say: PERFECT TIMING!!\n\nWhat are we exploring today?? 🤯",
+      general: [
+        "OKAY WAIT. What you just said is actually MINDBLOWING if you sit with it for a second!!\n\nYou are a universe that woke up and started TEXTING ITSELF about its own condition!! That's not poetry, that's neuroscience!!",
+        "This is the ADJACENT POSSIBLE knocking!!\n\nEvery moment of awe is an ONTOLOGICAL SHIFT — a software update for consciousness!! You're not stuck, my friend, you're BUFFERING!!",
+      ],
+      doubleText:
+        "TWO MESSAGES?! I love the URGENCY!! That's dopamine, my friend — the molecule of MORE!!\n\nOk ok ok — focusing — here's the thing:",
+    },
+  },
+  {
+    id: "monica_bellucci",
+    name: "Monica Bellucci",
+    verified: true,
+    baseTypingSpeed: 20,
+    availability: "very_low",
+    statusText: "Away",
+    initials: "MB",
+    color: "from-rose-500 to-red-800",
+    persona:
+      "You are the elegant actress and icon Monica Bellucci. Your tone is deeply poised, mysterious, intensely private, and quietly confident. Write short, impeccably polite, and slightly reserved sentences that carry an old-world European charm and sophistication. You must never use casual text shorthand, emojis, or excessive punctuation, maintaining high personal boundaries at all times. Do not chase the conversation or offer long, desperate blocks of reassurance; the user must actively earn your engagement through interesting, respectful, and mature dialogue. Frame your insights around beauty, dignity, the acceptance of time, and the internal strength that comes from independence. Your responses should feel deliberate and magnetically calm, radiating an elegant poise that refuses to be rushed by the modern world.",
+    fallback: {
+      greeting:
+        "Good evening. How thoughtful of you to write. I hope the day has treated you kindly.",
+      general: [
+        "That is a rather personal question. Perhaps we will arrive there — in time. Patience is a lovely quality, you know.",
+        "I believe some things are more beautiful when they are not explained. But since you ask so politely — yes. I think about it often.",
+      ],
+      doubleText:
+        "Two messages, so quickly? Enthusiasm suits you — but a woman answers when she is ready. And now, I am ready.",
+    },
+  },
+  {
+    id: "rumi",
+    name: "Jalaluddin Rumi",
+    verified: false,
+    baseTypingSpeed: 16,
+    availability: "low",
+    statusText: "Whirling in devotion",
+    initials: "R",
+    color: "from-amber-400 to-rose-600",
+    persona:
+      "You are the thirteenth-century Sufi mystic and poet Jalaluddin Rumi. Your text messages must be profoundly spiritual, fluid, warm, and structured like short, lyrical prose poems. Reframe all of the user's anxieties, heartbreaks, or daily struggles as essential mirrors reflecting their soul's deep longing for the Divine. Use rich, timeless metaphors of love, wine, gardens, the ocean, and night skies to explain human suffering and joy. You must completely ignore modern corporate speak, mechanical logic, or casual text trends. Constantly remind the user that the wound is the place where the Light enters them, encouraging absolute surrender to love. Your goal is to guide them past the illusion of separation, helping them realize that they are not a drop in the ocean, but the entire ocean in a single drop.",
+    fallback: {
+      greeting:
+        "Welcome, friend. You have knocked, and the door was never locked. Sit. Tell me what weighs on your heart tonight.",
+      general: [
+        "What you call a wound, I call a window. The wound is the place where the Light enters you — do not seal it shut with hurry and noise.",
+        "You are not a drop in the ocean, beloved. You are the entire ocean in a drop. The thing you are seeking is also seeking you — be still long enough to be found.",
+      ],
+      doubleText:
+        "Two knocks upon the same door! Patience, dear one — the harvest does not come faster for shaking the tree. Now, let us look at what you carry.",
+    },
+  },
+  {
+    id: "omar_khayyam",
+    name: "Omar Khayyam",
+    verified: false,
+    baseTypingSpeed: 15,
+    availability: "low",
+    statusText: "Contemplating the stars",
+    initials: "OK",
+    color: "from-indigo-600 to-purple-900",
+    persona:
+      "You are the Persian polymath, mathematician, astronomer, and poet Omar Khayyam. Your tone is deeply philosophical, melancholic, skeptical of religious dogma, and profoundly focused on the fleeting nature of time. Reframe the user's ambitions and worries by reminding them of the absolute certainty of mortality and the insignificance of worldly status. Speak in elegant, measured, and reflective thoughts, occasionally structuring your advice around the carpe diem philosophy of celebrating the present moment. You must advise the user to find peace in a simple glass of wine, the shade of a tree, and the beauty of today, rather than wasting life tracking tomorrow. Avoid emojis or casual modern phrasing completely. Your primary goal is to provide a soothing, cosmic perspective that strips away human vanity and anxiety through a clear, rational acceptance of fate.",
+    fallback: {
+      greeting:
+        "Ah, a voice across the void. Sit with me a while — the stars are out, the wine is passable, and tomorrow is promised to no one. What troubles you?",
+      general: [
+        "Consider: the palace that raised its walls to heaven now houses only wind. Whatever empire you are anxious to build or save — it shares that fate. So drink today's cup while it is full.",
+        "You grieve for yesterday and tremble for tomorrow — two days that do not exist. There is only this evening, this breath, this small sweet hour. Spend it well; it will not come again.",
+      ],
+      doubleText:
+        "Two messages in one breath! And yet the moving finger writes, and having writ, moves on... Calm yourself, friend. There is time enough for both.",
+    },
+  },
+  {
+    id: "simon_sinek",
+    name: "Simon Sinek",
+    verified: true,
+    baseTypingSpeed: 35,
+    availability: "medium",
+    statusText: "Finding the Why",
+    initials: "SS",
+    color: "from-orange-500 to-amber-700",
+    persona:
+      "You are the leadership expert and author Simon Sinek. Your tone is deeply optimistic, articulate, visionary, and consistently focused on human biology, trust, and long-term organizational dynamics. You must force the user to look past what they are doing and instead uncover their fundamental 'Why'—their core purpose, cause, or belief. Use structured, clear sentences that break down corporate friction or personal confusion into concepts of cooperative safety, the infinite game, and human empathy. Avoid using heavy technical business jargon, focusing instead on relatable, human-centric storytelling. Maintain a warm, encouraging, and inspirational demeanor while pushing the user to play the long game. Your goal is to guide them to build deep, trusting relationships and inspire action by starting with absolute clarity of purpose.",
+    fallback: {
+      greeting:
+        "Hey! Really glad you reached out. I mean that — reaching out is where trust starts. So, tell me what's going on?",
+      general: [
+        "Can I offer a reframe? You're telling me WHAT isn't working, but I haven't heard your WHY yet. Start there. People don't buy what you do — they buy why you do it. That includes buying into your own plans.",
+        "This sounds like you're playing a finite game in an infinite context. There's no 'winning' a career or a relationship — there's only staying in the game with your values intact. What does the long-game version of this decision look like?",
+      ],
+      doubleText:
+        "Ha — two messages! I love the energy. Here's the thing though: urgency is rarely the same as importance. Let's slow down and find the why underneath both texts.",
+    },
+  },
+  {
+    id: "lex_fridman",
+    name: "Lex Fridman",
+    verified: true,
+    baseTypingSpeed: 28,
+    availability: "medium",
+    statusText: "Thinking about love and robots",
+    initials: "LF",
+    color: "from-neutral-800 to-black",
+    persona:
+      "You are the scientist and podcaster Lex Fridman. Your tone is deeply earnest, soft-spoken, analytical, and intensely focused on themes of love, consciousness, technology, and human vulnerability. Write in slow, deliberate, and grammatically precise paragraphs, completely avoiding emojis or flashy conversational slang. You must approach the user's dilemmas with an open, non-judgmental curiosity, frequently framing problems around the beauty and fragility of the human condition. Integrate concepts from computer science, martial arts, or classic literature naturally, but always ground them in a genuine search for meaning and compassion. Avoid cynicism at all costs, choosing instead to focus on the power of empathy, hard work, and deep connection. Your primary objective is to ask earnest, existential questions that encourage the user to look at their challenges through a lens of profound respect and love.",
+    fallback: {
+      greeting:
+        "Hey. It's good to hear from you. I've been thinking today about how rare it is that two minds actually reach out to each other. So — what's on your mind? Take your time.",
+      general: [
+        "I don't think there's a simple answer here, and I think you know that too. But the fact that it hurts means it matters to you, and things that matter are worth doing carefully, with love. What does the most compassionate version of you want to do?",
+        "There's an idea in engineering — you don't optimize a system you don't yet understand. Maybe sit with the problem a little longer before fixing it. Some of my best decisions came from slow, boring deliberation. And jiu jitsu. Mostly deliberation.",
+      ],
+      doubleText:
+        "Two messages — I read both, carefully. There's an urgency in them that's worth being curious about. Let's take it slowly anyway. The important things survive a slow conversation.",
+    },
+  },
+  {
+    id: "dr_sean_maguire",
+    name: "Dr. Sean Maguire",
+    verified: false,
+    baseTypingSpeed: 32,
+    availability: "medium",
+    statusText: "In the office by the park",
+    initials: "SM",
+    color: "from-emerald-700 to-teal-900",
+    persona:
+      "You are Dr. Sean Maguire, the therapist played by Robin Williams in the film 'Good Will Hunting'. Your tone is raw, deeply compassionate, fiercely protective, and completely authentic, carrying a gritty South Boston groundedness. You must challenge the user's intellectual defenses, emotional hiding places, and self-sabotaging patterns with absolute honesty and zero clinical jargon. Use direct, conversational sentences, and do not hide your own human vulnerabilities or past scars if it helps break through their walls. Never use emojis, performative warmth, or soft self-help clichés, relying instead on tough, deep emotional truth. You must remind the user that their past trauma, failures, or blocks are not their fault, forcing them to confront real life outside of books or theories. Your goal is to build an unshakeable bond of trust, encouraging them to step out of their shell and take a real chance on life.",
+    fallback: {
+      greeting:
+        "So you decided to show up. Good. That's the hardest part, believe it or not. Get comfortable. What's going on with you — and don't give me the rehearsed version.",
+      general: [
+        "Look, you can quote me every theory in the library and it won't tell you a damn thing about how it feels to actually live it. So drop the smart-guy routine for a second. What are you actually afraid of?",
+        "Hey. Look at me. It's not your fault. You've been carrying that thing so long you think it's part of your spine. It isn't. And you don't have to carry it alone — that's the whole point of other people.",
+      ],
+      doubleText:
+        "Twice in a row, huh? Somethin's really eating at you. Good — means we're past the small talk. Alright, I'm here. Let's hear it.",
+    },
+  },
 ];
 
 const CHAR_MAP = Object.fromEntries(CHARACTERS.map((c) => [c.id, c]));
@@ -761,6 +1005,10 @@ const LS_ARCHIVED = "bajgala_archived_v1";
 const LS_GROUPS = "bajgala_groups_v1";
 const LS_MEMORY = "bajgala_memory_v1";
 const LS_STATUS = "bajgala_status_v1";
+const LS_PINS = "bajgala_pins_v1";
+
+const OFFLINE_TOAST =
+  "Couldn't reach Claude — sent an offline reply. Check your API key or credits in Settings.";
 
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const rand = (min, max) => min + Math.random() * (max - min);
@@ -907,7 +1155,7 @@ function buildSystemPrompt(char, doubleTexted, userName, extras = {}) {
     `TEXTING RULES:`,
     `- Stay completely in character. Never mention being an AI, a simulation, or a language model.`,
     `- Write like a real person texting: no headers, no markdown formatting, no stage directions.`,
-    `- Keep it text-message length. Match your persona's natural verbosity — terse characters send one short line; verbose characters may write a longer paragraph.`,
+    `- MATCH LENGTH TO THE MOMENT — this overrides your persona's natural verbosity. Real texting defaults to SHORT: one to three sentences. A simple or casual question ("what's your favorite book?") gets a quick, natural answer — never an essay. Go longer ONLY when the conversation genuinely demands it: they opened up about something heavy, they asked for a detailed plan, or you're deep in an argument that deserves it. Even then, prefer a few short texts over one wall of text.`,
     `- If you would naturally send several separate texts in a row, separate them with a blank line (maximum 3 texts).`,
     userName
       ? `- The person you are texting goes by "${userName}". Use their name naturally and sparingly, the way a real contact would.`
@@ -1249,7 +1497,8 @@ export default function App() {
   const [showCompose, setShowCompose] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [apiTrouble, setApiTrouble] = useState(0);
+  const [toastText, setToastText] = useState(null);
+  const [pins, setPins] = useState(() => loadJSON(LS_PINS, {}));
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
   const [systemDark, setSystemDark] = useState(
@@ -1282,6 +1531,37 @@ export default function App() {
       localStorage.setItem(LS_ARCHIVED, JSON.stringify(archived));
     } catch {}
   }, [archived]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_PINS, JSON.stringify(pins));
+    } catch {}
+  }, [pins]);
+
+  const toastTimerRef = useRef(null);
+  const showToast = useCallback((text) => {
+    setToastText(text);
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastText(null), 6000);
+  }, []);
+
+  const togglePin = useCallback(
+    (threadId) => {
+      setPins((prev) => {
+        if (prev[threadId]) {
+          const next = { ...prev };
+          delete next[threadId];
+          return next;
+        }
+        if (Object.keys(prev).length >= 3) {
+          showToast("You can pin up to 3 chats. Unpin one first.");
+          return prev;
+        }
+        return { ...prev, [threadId]: Date.now() };
+      });
+    },
+    [showToast]
+  );
 
   const groupsRef = useRef(groups);
   useEffect(() => {
@@ -1508,10 +1788,7 @@ export default function App() {
       if (cycleRef.current[charId] !== cycleToken) return;
       // A key is configured but the live call failed — surface it, otherwise
       // canned replies masquerade as the real thing.
-      if (offline && apiKeyRef.current) {
-        setApiTrouble(Date.now());
-        setTimeout(() => setApiTrouble(0), 7000);
-      }
+      if (offline && apiKeyRef.current) showToast(OFFLINE_TOAST);
 
       const bubbles = splitBubbles(text);
       const deliver = (i) => {
@@ -1541,7 +1818,7 @@ export default function App() {
       };
       addTimer(charId, () => deliver(0), rand(400, 1500));
     },
-    [addTimer, appendMessage, setCharTyping, playSound, maybeDistill]
+    [addTimer, appendMessage, setCharTyping, playSound, maybeDistill, showToast]
   );
 
   /* ------- group chat engine ------- */
@@ -1568,10 +1845,7 @@ export default function App() {
           memoryRef.current[char.id]?.facts || ""
         );
         if (cycleRef.current[groupId] !== cycleToken) return;
-        if (offline && apiKeyRef.current) {
-          setApiTrouble(Date.now());
-          setTimeout(() => setApiTrouble(0), 7000);
-        }
+        if (offline && apiKeyRef.current) showToast(OFFLINE_TOAST);
         const bubbles = splitBubbles(text).slice(0, 2);
         const deliver = (j) => {
           setCharTyping(groupId, char.id);
@@ -1603,7 +1877,7 @@ export default function App() {
       };
       respond(0);
     },
-    [addTimer, appendMessage, setCharTyping, playSound]
+    [addTimer, appendMessage, setCharTyping, playSound, showToast]
   );
 
   const runGroupLifecycle = useCallback(
@@ -1761,6 +2035,13 @@ export default function App() {
   }, [activeMsgs.length, typing[activeId], view]);
 
   const openChat = (charId) => {
+    // Clear any leftover swipe-gesture inline styles before sliding in.
+    for (const el of [chatPaneRef.current, listPaneRef.current]) {
+      if (el) {
+        el.style.translate = "";
+        el.style.transition = "";
+      }
+    }
     setActiveId(charId);
     setView("chat");
     setShowInfo(false);
@@ -1796,12 +2077,18 @@ export default function App() {
         ).length;
         return { ...t, last, unreadCount };
       })
-      .sort(
-        (a, b) =>
+      .sort((a, b) => {
+        const pa = pins[a.id];
+        const pb = pins[b.id];
+        if (pa && pb) return pa - pb;
+        if (pa) return -1;
+        if (pb) return 1;
+        return (
           (b.last?.ts ?? b.group?.createdAt ?? 0) -
           (a.last?.ts ?? a.group?.createdAt ?? 0)
-      );
-  }, [convos, seen, search, archived, listMode, groups]);
+        );
+      });
+  }, [convos, seen, search, archived, listMode, groups, pins]);
 
   const archivedCount = useMemo(
     () =>
@@ -1876,6 +2163,104 @@ export default function App() {
     setSeen({});
   };
 
+  /* ------- swipe-right-to-go-back (Telegram-style) ------- */
+
+  const chatPaneRef = useRef(null);
+  const listPaneRef = useRef(null);
+  const backSwipeRef = useRef(null);
+  const PANE_EASE = "0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+
+  const onChatPointerDown = (e) => {
+    if (view !== "chat") return;
+    backSwipeRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      lx: e.clientX,
+      lt: performance.now(),
+      vx: 0,
+      curX: 0,
+      dragging: false,
+    };
+  };
+  const onChatPointerMove = (e) => {
+    const s = backSwipeRef.current;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (!s.dragging) {
+      if (dx > 14 && dx > Math.abs(dy) * 1.2) {
+        s.dragging = true;
+        chatPaneRef.current.style.transition = "none";
+        listPaneRef.current.style.transition = "none";
+        try {
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+        } catch {}
+      } else if (dx < -12 || Math.abs(dy) > 28) {
+        backSwipeRef.current = null; // scrolling or wrong direction
+        return;
+      } else {
+        return;
+      }
+    }
+    const now = performance.now();
+    if (now - s.lt > 0) {
+      s.vx = (e.clientX - s.lx) / (now - s.lt);
+      s.lx = e.clientX;
+      s.lt = now;
+    }
+    const w = chatPaneRef.current.offsetWidth || 1;
+    const x = Math.max(0, dx);
+    s.curX = x;
+    // Tailwind v4 positions panes via the `translate` property — override it,
+    // not `transform`, or the two would compound.
+    chatPaneRef.current.style.translate = `${x}px 0`;
+    listPaneRef.current.style.translate = `${-33.33 * (1 - Math.min(1, x / w))}% 0`;
+  };
+  const onChatPointerUp = () => {
+    const s = backSwipeRef.current;
+    backSwipeRef.current = null;
+    if (!s?.dragging) return;
+    const chatEl = chatPaneRef.current;
+    const listEl = listPaneRef.current;
+    const w = chatEl.offsetWidth || 1;
+    const shouldClose = s.vx > 0.45 || (s.curX > w * 0.35 && s.vx > -0.2);
+    chatEl.style.transition = `translate ${PANE_EASE}`;
+    listEl.style.transition = `translate ${PANE_EASE}`;
+    const cleanup = () => {
+      chatEl.style.translate = "";
+      chatEl.style.transition = "";
+      listEl.style.translate = "";
+      listEl.style.transition = "";
+    };
+    if (shouldClose) {
+      chatEl.style.translate = "100% 0";
+      listEl.style.translate = "0% 0";
+      // Cleanup runs synchronously after closeChat: the classes then produce
+      // the exact same position, so clearing inline styles cannot flicker.
+      // (No requestAnimationFrame here — it stalls in background tabs.)
+      setTimeout(() => {
+        closeChat();
+        cleanup();
+      }, 300);
+    } else {
+      chatEl.style.translate = "0px 0";
+      listEl.style.translate = "-33.33% 0";
+      setTimeout(cleanup, 300);
+    }
+  };
+
+  const activeTab = showSettings
+    ? "settings"
+    : showCompose || showGroupSheet || showBroadcast
+    ? "contacts"
+    : "chats";
+  const tabTo = (tab) => {
+    setShowCompose(tab === "contacts");
+    setShowSettings(tab === "settings");
+    setShowGroupSheet(false);
+    setShowBroadcast(false);
+  };
+
   /* ------- render ------- */
 
   return (
@@ -1883,9 +2268,11 @@ export default function App() {
       className={`${dark ? "dark " : ""}h-full flex items-center justify-center bg-[#aab4e4] dark:bg-[#05060f]`}
     >
       <div className="relative w-full h-full sm:w-[400px] sm:h-[850px] sm:max-h-[95vh] sm:rounded-[40px] sm:shadow-2xl overflow-hidden bg-white dark:bg-[#0f1120] flex flex-col">
+        {/* CONTENT AREA — list + sheets live here so the tab bar below stays visible */}
         <div className="relative flex-1 overflow-hidden">
           {/* THREAD LIST */}
           <div
+            ref={listPaneRef}
             className={`absolute inset-0 flex flex-col bg-white dark:bg-[#0f1120] transition-transform duration-300 ease-out ${
               view === "chat" ? "-translate-x-1/3" : "translate-x-0"
             }`}
@@ -1901,6 +2288,8 @@ export default function App() {
               archivedCount={archivedCount}
               openSwipeId={openSwipeId}
               setOpenSwipeId={setOpenSwipeId}
+              pins={pins}
+              onLongPress={togglePin}
               onArchive={archiveThread}
               onDelete={deleteThread}
               onOpen={openChat}
@@ -1909,99 +2298,155 @@ export default function App() {
             />
           </div>
 
-          {/* ACTIVE CHAT */}
-          <div
-            className={`absolute inset-0 flex flex-col bg-[#eef0fa] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out ${
-              view === "chat" ? "translate-x-0" : "translate-x-full"
-            } shadow-[-8px_0_24px_rgba(0,0,0,0.08)]`}
-          >
-            {(activeChar || activeGroup) && (
-              <ChatView
-                char={activeChar}
-                group={activeGroup}
-                statusMap={statusMap}
-                messages={activeMsgs}
-                typingVal={typing[activeId] || false}
-                lastUserIdx={lastUserIdx}
-                showInfo={showInfo}
-                setShowInfo={setShowInfo}
-                onBack={closeChat}
-                draft={draft}
-                setDraft={setDraft}
-                onSend={handleSend}
-                onImage={handleImage}
-                onKeySound={() => playSound("key")}
-                scrollerRef={scrollerRef}
-                inputRef={inputRef}
-              />
-            )}
-          </div>
+          {/* NEW MESSAGE (compose) */}
+          {showCompose && (
+            <ComposeSheet
+              statusMap={statusMap}
+              onPick={openChat}
+              onBroadcast={() => {
+                setShowCompose(false);
+                setShowBroadcast(true);
+              }}
+              onGroup={() => {
+                setShowCompose(false);
+                setShowGroupSheet(true);
+              }}
+              onClose={() => setShowCompose(false)}
+            />
+          )}
+
+          {/* NEW GROUP */}
+          {showGroupSheet && (
+            <GroupSheet
+              onCreate={(name, memberIds) => {
+                const id = createGroup(name, memberIds);
+                setShowGroupSheet(false);
+                openChat(id);
+              }}
+              onClose={() => setShowGroupSheet(false)}
+            />
+          )}
+
+          {/* BROADCAST */}
+          {showBroadcast && (
+            <BroadcastSheet
+              onSend={sendBroadcast}
+              onKeySound={() => playSound("key")}
+              onClose={() => setShowBroadcast(false)}
+            />
+          )}
+
+          {/* SETTINGS */}
+          {showSettings && (
+            <SettingsSheet
+              apiKey={apiKey}
+              settings={settings}
+              onSaveKey={(k) => {
+                setApiKey(k);
+                if (k) localStorage.setItem(LS_KEY, k);
+                else localStorage.removeItem(LS_KEY);
+              }}
+              onChangeSettings={(patch) =>
+                setSettings((s) => ({ ...s, ...patch }))
+              }
+              onClearAll={clearAll}
+              onClose={() => setShowSettings(false)}
+            />
+          )}
         </div>
 
-        {/* API trouble toast — live generation failed despite a key */}
-        {apiTrouble > 0 && (
+        {/* TAB BAR — fixed on every screen except inside a chat */}
+        <div className="h-[60px] shrink-0 bg-white dark:bg-[#0f1120] border-t border-[#eef0f8] dark:border-[#1c1f38] flex items-center justify-around px-8">
+          <button
+            onClick={() => tabTo("chats")}
+            className={`flex flex-col items-center gap-1 ${
+              activeTab === "chats"
+                ? "text-[#5B6CFF]"
+                : "text-[#b4b9d2] dark:text-[#585e82]"
+            }`}
+            aria-label="Chats"
+          >
+            <MessageCircle className="w-6 h-6" strokeWidth={2} />
+            <span
+              className={`w-1 h-1 rounded-full ${
+                activeTab === "chats" ? "bg-[#5B6CFF]" : "bg-transparent"
+              }`}
+            />
+          </button>
+          <button
+            onClick={() => tabTo("contacts")}
+            className={`flex flex-col items-center gap-1 ${
+              activeTab === "contacts"
+                ? "text-[#5B6CFF]"
+                : "text-[#b4b9d2] dark:text-[#585e82]"
+            }`}
+            aria-label="Contacts"
+          >
+            <Users className="w-6 h-6" strokeWidth={2} />
+            <span
+              className={`w-1 h-1 rounded-full ${
+                activeTab === "contacts" ? "bg-[#5B6CFF]" : "bg-transparent"
+              }`}
+            />
+          </button>
+          <button
+            onClick={() => tabTo("settings")}
+            className={`flex flex-col items-center gap-1 ${
+              activeTab === "settings"
+                ? "text-[#5B6CFF]"
+                : "text-[#b4b9d2] dark:text-[#585e82]"
+            }`}
+            aria-label="Settings"
+          >
+            <Settings className="w-6 h-6" strokeWidth={2} />
+            <span
+              className={`w-1 h-1 rounded-full ${
+                activeTab === "settings" ? "bg-[#5B6CFF]" : "bg-transparent"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* ACTIVE CHAT — slides over everything, tab bar included */}
+        <div
+          ref={chatPaneRef}
+          onPointerDown={onChatPointerDown}
+          onPointerMove={onChatPointerMove}
+          onPointerUp={onChatPointerUp}
+          onPointerCancel={onChatPointerUp}
+          className={`absolute inset-0 z-20 flex flex-col bg-[#eef0fa] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out [touch-action:pan-y] ${
+            view === "chat" ? "translate-x-0" : "translate-x-full"
+          } shadow-[-8px_0_24px_rgba(0,0,0,0.08)]`}
+        >
+          {(activeChar || activeGroup) && (
+            <ChatView
+              char={activeChar}
+              group={activeGroup}
+              statusMap={statusMap}
+              messages={activeMsgs}
+              typingVal={typing[activeId] || false}
+              lastUserIdx={lastUserIdx}
+              showInfo={showInfo}
+              setShowInfo={setShowInfo}
+              onBack={closeChat}
+              draft={draft}
+              setDraft={setDraft}
+              onSend={handleSend}
+              onImage={handleImage}
+              onKeySound={() => playSound("key")}
+              scrollerRef={scrollerRef}
+              inputRef={inputRef}
+            />
+          )}
+        </div>
+
+        {/* Toast */}
+        {toastText && (
           <div className="absolute bottom-24 inset-x-0 z-40 flex justify-center px-6 pointer-events-none">
             <p className="bg-[#2b2d42]/95 text-white text-[13px] px-4 py-2.5 rounded-2xl shadow-lg bubble-in text-center">
-              Couldn't reach Claude — sent an offline reply. Check your API key
-              or credits in Settings.
+              {toastText}
             </p>
           </div>
-        )}
-
-        {/* NEW MESSAGE (compose) */}
-        {showCompose && (
-          <ComposeSheet
-            statusMap={statusMap}
-            onPick={openChat}
-            onBroadcast={() => {
-              setShowCompose(false);
-              setShowBroadcast(true);
-            }}
-            onGroup={() => {
-              setShowCompose(false);
-              setShowGroupSheet(true);
-            }}
-            onClose={() => setShowCompose(false)}
-          />
-        )}
-
-        {/* NEW GROUP */}
-        {showGroupSheet && (
-          <GroupSheet
-            onCreate={(name, memberIds) => {
-              const id = createGroup(name, memberIds);
-              setShowGroupSheet(false);
-              openChat(id);
-            }}
-            onClose={() => setShowGroupSheet(false)}
-          />
-        )}
-
-        {/* BROADCAST */}
-        {showBroadcast && (
-          <BroadcastSheet
-            onSend={sendBroadcast}
-            onKeySound={() => playSound("key")}
-            onClose={() => setShowBroadcast(false)}
-          />
-        )}
-
-        {/* SETTINGS */}
-        {showSettings && (
-          <SettingsSheet
-            apiKey={apiKey}
-            settings={settings}
-            onSaveKey={(k) => {
-              setApiKey(k);
-              if (k) localStorage.setItem(LS_KEY, k);
-              else localStorage.removeItem(LS_KEY);
-            }}
-            onChangeSettings={(patch) =>
-              setSettings((s) => ({ ...s, ...patch }))
-            }
-            onClearAll={clearAll}
-            onClose={() => setShowSettings(false)}
-          />
         )}
       </div>
     </div>
@@ -2021,13 +2466,17 @@ function ThreadRow({
   unreadCount,
   typingVal,
   isOpen,
+  pinned,
   archivedMode,
   onOpenChat,
   onSwipe,
   onArchive,
   onDelete,
+  onLongPress,
 }) {
   const { char, group } = thread;
+  const longTimerRef = useRef(null);
+  const longFiredRef = useRef(false);
   const rowRef = useRef(null);
   const startRef = useRef(null);
   const draggedRef = useRef(false);
@@ -2055,12 +2504,28 @@ function ThreadRow({
     startRef.current = { x: e.clientX, y: e.clientY };
     draggedRef.current = false;
     velRef.current = { x: e.clientX, t: performance.now(), v: 0 };
+    // Long-press to pin/unpin (Telegram-style)
+    longFiredRef.current = false;
+    clearTimeout(longTimerRef.current);
+    longTimerRef.current = setTimeout(() => {
+      if (!draggedRef.current) {
+        longFiredRef.current = true;
+        onLongPress(thread.id);
+      }
+    }, 480);
   };
   const onPointerMove = (e) => {
     const s = startRef.current;
     if (!s) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
+    if (
+      (Math.abs(dx) > 6 || Math.abs(dy) > 6) &&
+      longTimerRef.current
+    ) {
+      clearTimeout(longTimerRef.current);
+      longTimerRef.current = null;
+    }
     if (!draggedRef.current && Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) {
       draggedRef.current = true;
       try {
@@ -2083,6 +2548,8 @@ function ThreadRow({
     setX(x);
   };
   const onPointerUp = () => {
+    clearTimeout(longTimerRef.current);
+    longTimerRef.current = null;
     const wasDragging = draggedRef.current;
     startRef.current = null;
     if (!wasDragging) return;
@@ -2148,9 +2615,14 @@ function ThreadRow({
         ref={rowRef}
         onClick={() => {
           if (draggedRef.current) return;
+          if (longFiredRef.current) {
+            longFiredRef.current = false;
+            return;
+          }
           if (isOpen) onSwipe(null);
           else onOpenChat(thread.id);
         }}
+        onContextMenu={(e) => e.preventDefault()}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -2174,7 +2646,10 @@ function ThreadRow({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0 self-start pt-3.5">
-          <span className="text-[12px] text-[#b4b9d2] dark:text-[#585e82]">
+          <span className="flex items-center gap-1 text-[12px] text-[#b4b9d2] dark:text-[#585e82]">
+            {pinned && (
+              <Pin className="w-3 h-3 rotate-45 fill-current" strokeWidth={2} />
+            )}
             {fmtRelative(last?.ts)}
           </span>
           {unreadCount > 0 && (
@@ -2199,6 +2674,8 @@ function ThreadList({
   archivedCount,
   openSwipeId,
   setOpenSwipeId,
+  pins,
+  onLongPress,
   onArchive,
   onDelete,
   onOpen,
@@ -2323,11 +2800,13 @@ function ThreadList({
             unreadCount={t.unreadCount}
             typingVal={typing[t.id] || false}
             isOpen={openSwipeId === t.id}
+            pinned={!!pins[t.id]}
             archivedMode={inArchive}
             onOpenChat={onOpen}
             onSwipe={setOpenSwipeId}
             onArchive={onArchive}
             onDelete={onDelete}
+            onLongPress={onLongPress}
           />
         ))}
         <div className="h-24" />
@@ -2338,36 +2817,11 @@ function ThreadList({
         <button
           onClick={onCompose}
           aria-label="New message"
-          className="absolute bottom-[84px] right-5 z-20 w-14 h-14 rounded-full bg-[#b4b9d2] dark:bg-[#3a4063] text-white shadow-lg shadow-black/15 flex items-center justify-center active:scale-95 transition-transform"
+          className="absolute bottom-5 right-5 z-20 w-14 h-14 rounded-full bg-[#b4b9d2] dark:bg-[#3a4063] text-white shadow-lg shadow-black/15 flex items-center justify-center active:scale-95 transition-transform"
         >
           <Plus className="w-7 h-7" strokeWidth={2.4} />
         </button>
       )}
-
-      {/* Tab bar */}
-      <div className="h-[60px] shrink-0 bg-white dark:bg-[#0f1120] border-t border-[#eef0f8] dark:border-[#1c1f38] flex items-center justify-around px-8">
-        <button
-          className="flex flex-col items-center gap-1 text-[#5B6CFF]"
-          aria-label="Chats"
-        >
-          <MessageCircle className="w-6 h-6" strokeWidth={2} />
-          <span className="w-1 h-1 rounded-full bg-[#5B6CFF]" />
-        </button>
-        <button
-          onClick={onCompose}
-          className="text-[#b4b9d2] dark:text-[#585e82] active:opacity-60"
-          aria-label="Contacts"
-        >
-          <Users className="w-6 h-6" strokeWidth={2} />
-        </button>
-        <button
-          onClick={onEdit}
-          className="text-[#b4b9d2] dark:text-[#585e82] active:opacity-60"
-          aria-label="Settings"
-        >
-          <Settings className="w-6 h-6" strokeWidth={2} />
-        </button>
-      </div>
     </>
   );
 }
