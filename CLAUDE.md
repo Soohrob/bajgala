@@ -19,7 +19,7 @@ There are no tests and no linter. Verification is manual: build + exercise the U
 
 ## Architecture
 
-**The entire app is one file: `src/App.jsx` (~2,800 lines). This is intentional — keep it that way unless the user asks otherwise.** The file is organized in labeled sections, top to bottom: sound engine → `CHARACTERS` database → helpers → response generation → UI components → main `App` → screens (ThreadList/ThreadRow, ComposeSheet, BroadcastSheet, ChatView, SettingsSheet).
+**The entire app is one file: `src/App.jsx` (~3,800 lines). This is intentional — keep it that way unless the user asks otherwise.** The file is organized in labeled sections, top to bottom: sound engine → `CHARACTERS` database → helpers → response generation → UI components → main `App` → screens (ThreadList/ThreadRow, ComposeSheet, BroadcastSheet, ChatView, SettingsSheet).
 
 ### The friction engine (core of the product)
 
@@ -48,7 +48,7 @@ Characters must never reply instantly. Every user send runs an asynchronous life
 
 ### Persistence
 
-Everything is in localStorage under `bajgala_*` keys (conversations, seen timestamps, archived map, settings, API key). Conversations are **per-device**; there is no sync (planned backend feature). Images are canvas-compressed to ~50KB JPEG before storing — localStorage's ~5MB quota is the ceiling, and all `localStorage.setItem` calls are wrapped in try/catch to fail silently.
+Everything is in localStorage under `bajgala_*` keys, each with a `const LS_*` at the top of `App.jsx`: conversations (`_convos_v1`), seen timestamps (`_seen_v1`), archived map (`_archived_v1`), groups (`_groups_v1`), distilled memory (`_memory_v1`), daily statuses (`_status_v1`), pinned chats (`_pins_v1`), settings (`_settings_v1`), API key (`_api_key`). Reactions live inline on each message object (`reaction: {emoji, by}`). Conversations are **per-device**; there is no sync (planned backend feature). Images are canvas-compressed to ~50KB JPEG before storing — localStorage's ~5MB quota is the ceiling, and all `localStorage.setItem` calls are wrapped in try/catch to fail silently.
 
 ### UI system
 
