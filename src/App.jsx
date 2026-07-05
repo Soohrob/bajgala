@@ -7,6 +7,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Info,
   KeyRound,
   Megaphone,
@@ -993,6 +994,27 @@ function isOnline(char) {
   }
 }
 
+/** Header presence line for a 1:1 chat: "online" or a plausible "last seen …". */
+function lastSeenText(char, messages) {
+  if (isOnline(char)) return "online";
+  const lastChar = [...(messages ?? [])]
+    .reverse()
+    .find((m) => m.sender === "char");
+  if (lastChar) {
+    const diff = Date.now() - lastChar.ts;
+    if (diff < 3_600_000)
+      return `last seen ${Math.max(1, Math.round(diff / 60000))}m ago`;
+    if (diff < 86_400_000)
+      return `last seen ${Math.round(diff / 3_600_000)}h ago`;
+  }
+  const h = new Date().getHours();
+  if (char.availability === "nocturnal")
+    return h >= 6 && h < 18 ? "last seen last night" : "last seen recently";
+  if (["high", "medium", "market_hours"].includes(char.availability))
+    return "last seen today";
+  return "last seen recently";
+}
+
 /* ============================================================================
    HELPERS
    ========================================================================== */
@@ -1176,6 +1198,9 @@ function buildSystemPrompt(char, doubleTexted, userName, extras = {}) {
       : ``,
     extras.memory
       ? `- THINGS YOU REMEMBER about this person from your previous conversations (use naturally, never recite):\n${extras.memory}`
+      : ``,
+    extras.delayed
+      ? `- You took a while to reply — you were away doing your own thing. Open with a brief, in-character acknowledgement of the delay (an offhand reason fitting your life), then answer. Keep it light; don't grovel.`
       : ``,
     doubleTexted
       ? `- [System Note: The user has double-texted you before you responded] React naturally to being rushed or double-texted, true to your personality, then address everything they said.`
@@ -1418,7 +1443,7 @@ function Avatar({ char, size = "w-12 h-12", text = "text-base", dot = false }) {
         {char.initials}
       </div>
       {dot && isOnline(char) && (
-        <span className="absolute bottom-0 left-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-[#0f1120]" />
+        <span className="online-pulse absolute bottom-0 left-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-[#0f1120]" />
       )}
     </div>
   );
@@ -1763,6 +1788,36 @@ export default function App() {
     );
   }, []);
 
+  // Set (or clear, when same emoji) a reaction on a single message.
+  const setMessageReaction = useCallback((threadId, msgId, emoji, by = "user") => {
+    setConvos((prev) => {
+      const msgs = prev[threadId];
+      if (!msgs) return prev;
+      return {
+        ...prev,
+        [threadId]: msgs.map((m) =>
+          m.id === msgId
+            ? {
+                ...m,
+                reaction:
+                  m.reaction?.emoji === emoji && m.reaction?.by === by
+                    ? undefined
+                    : { emoji, by },
+              }
+            : m
+        ),
+      };
+    });
+  }, []);
+
+  const deleteMessage = useCallback((threadId, msgId) => {
+    setConvos((prev) => {
+      const msgs = prev[threadId];
+      if (!msgs) return prev;
+      return { ...prev, [threadId]: msgs.filter((m) => m.id !== msgId) };
+    });
+  }, []);
+
   /* ------- the friction engine ------- */
 
   const beginReply = useCallback(
@@ -1780,20 +1835,45 @@ export default function App() {
           (firstNewUser?.ts ?? Date.now()) - history[lastCharIdx].ts;
         if (gap > 3 * 3_600_000) gapText = humanizeGap(gap);
       }
+      // Rare "delayed comeback": they went quiet, then reply with a light
+      // in-character excuse for the gap.
+      const delayed = !cycleToken.doubleTexted && Math.random() < 0.12;
       const { text, offline } = await generateReply(
         apiKeyRef.current,
         char,
         history,
         cycleToken.doubleTexted,
         settingsRef.current.userName.trim(),
-        { gapText, memory: memoryRef.current[charId]?.facts || "" }
+        { gapText, delayed, memory: memoryRef.current[charId]?.facts || "" }
       );
       if (cycleRef.current[charId] !== cycleToken) return;
       // A key is configured but the live call failed — surface it, otherwise
       // canned replies masquerade as the real thing.
       if (offline && apiKeyRef.current) showToast(OFFLINE_TOAST);
 
+      // Occasionally tapback the user's last message the way a real contact
+      // would drop a ❤️ or 👍 before (or instead of) typing.
+      if (Math.random() < 0.22) {
+        const msgs = convosRef.current[charId] ?? [];
+        const lastUser = [...msgs].reverse().find((m) => m.sender === "user");
+        if (lastUser && !lastUser.reaction) {
+          const pool = ["❤️", "❤️", "👍", "👍", "😂", "‼️", "😮"];
+          addTimer(
+            charId,
+            () =>
+              setMessageReaction(
+                charId,
+                lastUser.id,
+                pool[Math.floor(Math.random() * pool.length)],
+                "char"
+              ),
+            rand(300, 1500)
+          );
+        }
+      }
+
       const bubbles = splitBubbles(text);
+      const firstGap = delayed ? rand(9000, 22000) : rand(400, 1500);
       const deliver = (i) => {
         setCharTyping(charId, true);
         addTimer(
@@ -1819,9 +1899,17 @@ export default function App() {
           typingMs(char, bubbles[i])
         );
       };
-      addTimer(charId, () => deliver(0), rand(400, 1500));
+      addTimer(charId, () => deliver(0), firstGap);
     },
-    [addTimer, appendMessage, setCharTyping, playSound, maybeDistill, showToast]
+    [
+      addTimer,
+      appendMessage,
+      setCharTyping,
+      playSound,
+      maybeDistill,
+      showToast,
+      setMessageReaction,
+    ]
   );
 
   /* ------- group chat engine ------- */
@@ -2071,15 +2159,27 @@ export default function App() {
       .filter((t) =>
         listMode === "archived" ? !!archived[t.id] : !archived[t.id]
       )
-      .filter((t) => !q || t.name.toLowerCase().includes(q))
       .map((t) => {
         const msgs = convos[t.id] ?? [];
         const last = msgs[msgs.length - 1];
         const unreadCount = msgs.filter(
           (m) => m.sender === "char" && m.ts > (seen[t.id] ?? 0)
         ).length;
-        return { ...t, last, unreadCount };
+        // Search matches the name OR any message text; when only a message
+        // matches, surface that message as the preview snippet.
+        let nameMatch = true;
+        let msgHit = null;
+        if (q) {
+          nameMatch = t.name.toLowerCase().includes(q);
+          if (!nameMatch) {
+            msgHit = [...msgs]
+              .reverse()
+              .find((m) => m.text && m.text.toLowerCase().includes(q));
+          }
+        }
+        return { ...t, last, unreadCount, nameMatch, msgHit };
       })
+      .filter((t) => !q || t.nameMatch || t.msgHit)
       .sort((a, b) => {
         const pa = pins[a.id];
         const pb = pins[b.id];
@@ -2102,6 +2202,18 @@ export default function App() {
       ).length,
     [archived, convos, groups]
   );
+
+  // Total unread across all non-archived threads, for the Chats tab badge.
+  const totalUnread = useMemo(() => {
+    let n = 0;
+    for (const id of Object.keys(convos)) {
+      if (archived[id]) continue;
+      if (!CHAR_MAP[id] && !groups.some((g) => g.id === id)) continue;
+      for (const m of convos[id])
+        if (m.sender === "char" && m.ts > (seen[id] ?? 0)) n++;
+    }
+    return n;
+  }, [convos, seen, archived, groups]);
 
   const createGroup = useCallback((name, memberIds) => {
     const id = "grp_" + uid();
@@ -2369,7 +2481,14 @@ export default function App() {
             }`}
             aria-label="Chats"
           >
-            <MessageCircle className="w-6 h-6" strokeWidth={2} />
+            <span className="relative">
+              <MessageCircle className="w-6 h-6" strokeWidth={2} />
+              {totalUnread > 0 && (
+                <span className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 rounded-full bg-[#ff4fa0] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#0f1120]">
+                  {totalUnread > 99 ? "99+" : totalUnread}
+                </span>
+              )}
+            </span>
             <span
               className={`w-1 h-1 rounded-full ${
                 activeTab === "chats" ? "bg-[#5B6CFF]" : "bg-transparent"
@@ -2417,7 +2536,7 @@ export default function App() {
           onPointerMove={onChatPointerMove}
           onPointerUp={onChatPointerUp}
           onPointerCancel={onChatPointerUp}
-          className={`absolute inset-0 z-20 flex flex-col bg-[#eef0fa] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out [touch-action:pan-y] ${
+          className={`chat-aurora absolute inset-0 z-20 flex flex-col overflow-hidden bg-[#eef0fa] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out [touch-action:pan-y] ${
             view === "chat" ? "translate-x-0" : "translate-x-full"
           } shadow-[-8px_0_24px_rgba(0,0,0,0.08)]`}
         >
@@ -2436,6 +2555,10 @@ export default function App() {
               setDraft={setDraft}
               onSend={handleSend}
               onImage={handleImage}
+              onReact={(msgId, emoji) =>
+                setMessageReaction(activeId, msgId, emoji, "user")
+              }
+              onDeleteMessage={(msgId) => deleteMessage(activeId, msgId)}
               onKeySound={() => playSound("key")}
               scrollerRef={scrollerRef}
               inputRef={inputRef}
@@ -2481,12 +2604,21 @@ function ThreadRow({
   const longTimerRef = useRef(null);
   const longFiredRef = useRef(false);
   const rowRef = useRef(null);
+  const actionsRef = useRef(null);
   const startRef = useRef(null);
   const draggedRef = useRef(false);
   const posRef = useRef(0);
   const velRef = useRef({ x: 0, t: 0, v: 0 });
 
   const base = isOpen ? -ACTION_W : 0;
+
+  // The action buttons are only made visible while the row is open or being
+  // dragged. Keeping them opacity-0 the rest of the time stops them peeking
+  // through during fast momentum scrolling (a compositing-layer flicker).
+  const showActions = (on) => {
+    const el = actionsRef.current;
+    if (el) el.style.opacity = on ? "1" : "0";
+  };
 
   // Snap to the resting point whenever open/closed state changes.
   useEffect(() => {
@@ -2495,6 +2627,7 @@ function ThreadRow({
     el.style.transition = SNAP_EASE;
     el.style.transform = `translateX(${base}px)`;
     posRef.current = base;
+    showActions(base !== 0);
   }, [base]);
 
   const setX = (x) => {
@@ -2537,6 +2670,7 @@ function ThreadRow({
       // Track the finger 1:1 with zero React re-renders while dragging
       const el = rowRef.current;
       if (el) el.style.transition = "none";
+      showActions(true);
     }
     if (!draggedRef.current) return;
     const now = performance.now();
@@ -2578,7 +2712,9 @@ function ThreadRow({
     : group && last.charId
     ? `${CHAR_MAP[last.charId]?.name.split(" ")[0] ?? ""}: `
     : "";
-  const snippet = typingVal
+  const snippet = thread.msgHit
+    ? thread.msgHit.text.replace(/\s+/g, " ")
+    : typingVal
     ? typeof typingVal === "string"
       ? `${CHAR_MAP[typingVal]?.name.split(" ")[0] ?? "Someone"} is typing…`
       : "typing…"
@@ -2592,10 +2728,11 @@ function ThreadRow({
 
   return (
     <div className="relative overflow-hidden">
-      {/* actions revealed behind the row */}
+      {/* actions revealed behind the row (hidden until open/dragged) */}
       <div
-        className="absolute inset-y-1 right-3 flex gap-1.5"
-        style={{ width: ACTION_W }}
+        ref={actionsRef}
+        className="absolute inset-y-1 right-3 flex gap-1.5 transition-opacity duration-150"
+        style={{ width: ACTION_W, opacity: isOpen ? 1 : 0 }}
       >
         <button
           onClick={() => onArchive(thread.id, !archivedMode)}
@@ -2704,7 +2841,7 @@ function ThreadList({
               <ChevronLeft className="w-7 h-7" strokeWidth={2.4} />
             </button>
           )}
-          <h1 className="flex-1 text-[30px] font-extrabold tracking-tight text-[#232847] dark:text-white">
+          <h1 className="flex-1 text-[30px] font-extrabold tracking-tight gradient-text">
             {inArchive ? "Archived" : "Messages"}
           </h1>
           <button
@@ -3127,6 +3264,8 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
    ACTIVE CHAT SCREEN
    ========================================================================== */
 
+const REACTIONS = ["❤️", "😂", "👍", "‼️", "😮", "😢"];
+
 function ChatView({
   char,
   group,
@@ -3141,12 +3280,18 @@ function ChatView({
   setDraft,
   onSend,
   onImage,
+  onReact,
+  onDeleteMessage,
   onKeySound,
   scrollerRef,
   inputRef,
 }) {
   const camRef = useRef(null);
   const libRef = useRef(null);
+  const [menu, setMenu] = useState(null); // { msg, y } for the long-press menu
+  const pressRef = useRef(null);
+
+  const presence = char ? lastSeenText(char, messages) : null;
 
   // Auto-grow the composer like Telegram/WhatsApp: 1 line → up to ~5 lines.
   useEffect(() => {
@@ -3155,6 +3300,44 @@ function ChatView({
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
   }, [draft, inputRef]);
+
+  // Long-press a bubble to open the reaction / copy / delete menu.
+  const bubbleDown = (e, m) => {
+    const y = e.clientY;
+    pressRef.current = { x: e.clientX, y, m, moved: false, fired: false };
+    clearTimeout(pressRef._t);
+    pressRef._t = setTimeout(() => {
+      if (pressRef.current && !pressRef.current.moved) {
+        pressRef.current.fired = true;
+        setMenu({ msg: m, y });
+      }
+    }, 420);
+  };
+  const bubbleMove = (e) => {
+    const s = pressRef.current;
+    if (!s) return;
+    if (Math.abs(e.clientX - s.x) > 8 || Math.abs(e.clientY - s.y) > 8) {
+      s.moved = true;
+      clearTimeout(pressRef._t);
+    }
+  };
+  const bubbleUp = () => {
+    clearTimeout(pressRef._t);
+    pressRef.current = null;
+  };
+
+  const react = (emoji) => {
+    if (menu) onReact(menu.msg.id, emoji);
+    setMenu(null);
+  };
+  const copyMsg = () => {
+    if (menu?.msg.text) navigator.clipboard?.writeText(menu.msg.text).catch(() => {});
+    setMenu(null);
+  };
+  const deleteMsg = () => {
+    if (menu) onDeleteMessage(menu.msg.id);
+    setMenu(null);
+  };
 
   return (
     <>
@@ -3168,15 +3351,25 @@ function ChatView({
             <ChevronLeft className="w-6 h-6" strokeWidth={2.2} />
           </button>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0">
-            <span className="text-[17px] font-bold text-[#232847] dark:text-white truncate max-w-full flex items-center gap-2">
+            <span className="text-[17px] font-bold text-[#232847] dark:text-white truncate max-w-full">
               {char ? char.name : group.name}
-              {char && isOnline(char) && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-              )}
             </span>
-            {group && (
+            {group ? (
               <span className="text-[11px] text-[#9aa0bd]">
                 {group.members.length} members
+              </span>
+            ) : (
+              <span
+                className={`text-[11px] flex items-center gap-1 ${
+                  presence === "online"
+                    ? "text-emerald-500"
+                    : "text-[#9aa0bd]"
+                }`}
+              >
+                {presence === "online" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 online-pulse" />
+                )}
+                {presence}
               </span>
             )}
           </div>
@@ -3234,7 +3427,7 @@ function ChatView({
 
       <div
         ref={scrollerRef}
-        className="flex-1 overflow-y-auto no-scrollbar py-4 space-y-0.5"
+        className="relative z-[1] flex-1 overflow-y-auto no-scrollbar py-4 space-y-0.5"
       >
         {messages[0] && (
           <div className="flex justify-center pb-2">
@@ -3267,32 +3460,51 @@ function ChatView({
               <div
                 className={`flex px-4 ${
                   isUser ? "justify-end" : "justify-start"
-                } ${firstOfGroup ? "mt-2" : "mt-0.5"} bubble-in`}
+                } ${firstOfGroup ? "mt-2" : "mt-0.5"} ${
+                  m.reaction ? "mb-2" : ""
+                } bubble-in`}
               >
-                <div
-                  className={`max-w-[78%] text-[15px] leading-[21px] whitespace-pre-wrap break-words rounded-[20px] overflow-hidden ${
-                    m.image ? "p-1" : "px-4 py-2.5"
-                  } ${
-                    isUser
-                      ? `bg-[#5B6CFF] text-white shadow-sm shadow-indigo-500/20 ${
-                          lastOfGroup ? "rounded-br-[6px]" : ""
-                        }`
-                      : `bg-white dark:bg-[#1e2140] text-[#33395c] dark:text-[#e6e8f5] shadow-sm ${
-                          lastOfGroup ? "rounded-bl-[6px]" : ""
-                        }`
-                  }`}
-                >
-                  {m.image && (
-                    <img
-                      src={m.image}
-                      alt=""
-                      className="rounded-[13px] max-h-72 w-full object-cover"
-                      draggable={false}
-                    />
-                  )}
-                  {m.text && (
-                    <span className={m.image ? "block px-2.5 py-1.5" : ""}>
-                      {m.text}
+                <div className="relative max-w-[78%]">
+                  <div
+                    onPointerDown={(e) => bubbleDown(e, m)}
+                    onPointerMove={bubbleMove}
+                    onPointerUp={bubbleUp}
+                    onPointerCancel={bubbleUp}
+                    onContextMenu={(e) => e.preventDefault()}
+                    style={{ touchAction: "pan-y" }}
+                    className={`text-[15px] leading-[21px] whitespace-pre-wrap break-words rounded-[20px] overflow-hidden select-none ${
+                      m.image ? "p-1" : "px-4 py-2.5"
+                    } ${
+                      isUser
+                        ? `bg-gradient-to-br from-[#6b78ff] to-[#5560f5] text-white shadow-md shadow-indigo-500/25 ${
+                            lastOfGroup ? "rounded-br-[6px]" : ""
+                          }`
+                        : `bg-white dark:bg-[#1e2140] text-[#33395c] dark:text-[#e6e8f5] shadow-sm ${
+                            lastOfGroup ? "rounded-bl-[6px]" : ""
+                          }`
+                    }`}
+                  >
+                    {m.image && (
+                      <img
+                        src={m.image}
+                        alt=""
+                        className="rounded-[13px] max-h-72 w-full object-cover"
+                        draggable={false}
+                      />
+                    )}
+                    {m.text && (
+                      <span className={m.image ? "block px-2.5 py-1.5" : ""}>
+                        {m.text}
+                      </span>
+                    )}
+                  </div>
+                  {m.reaction && (
+                    <span
+                      className={`absolute -bottom-3 ${
+                        isUser ? "left-1" : "right-1"
+                      } bg-white dark:bg-[#2a2e52] rounded-full px-1 text-[13px] leading-[18px] shadow ring-1 ring-black/5`}
+                    >
+                      {m.reaction.emoji}
                     </span>
                   )}
                 </div>
@@ -3328,7 +3540,7 @@ function ChatView({
         )}
       </div>
 
-      <div className="px-3 pb-5 pt-2">
+      <div className="relative z-[1] px-3 pb-5 pt-2">
         {/* hidden pickers: camera capture + photo library */}
         <input
           ref={camRef}
@@ -3392,6 +3604,58 @@ function ChatView({
           )}
         </div>
       </div>
+
+      {/* Long-press message menu: reactions + copy/delete */}
+      {menu && (
+        <div
+          className="absolute inset-0 z-40 bg-black/30 backdrop-blur-[1px] flex flex-col"
+          onClick={() => setMenu(null)}
+        >
+          <div
+            className="absolute inset-x-0 flex flex-col items-center gap-2 px-6"
+            style={{
+              top: Math.min(Math.max(menu.y - 60, 70), window.innerHeight - 190),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* reaction row */}
+            <div className="flex gap-1 bg-white dark:bg-[#1e2140] rounded-full px-2 py-1.5 shadow-xl bubble-in">
+              {REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => react(emoji)}
+                  className={`w-9 h-9 rounded-full text-[20px] flex items-center justify-center active:scale-90 transition-transform ${
+                    menu.msg.reaction?.emoji === emoji
+                      ? "bg-[#eceefb] dark:bg-[#2a2e52]"
+                      : ""
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            {/* actions */}
+            <div className="w-44 bg-white dark:bg-[#1e2140] rounded-2xl shadow-xl overflow-hidden bubble-in">
+              {menu.msg.text && (
+                <button
+                  onClick={copyMsg}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-[15px] text-[#232847] dark:text-white active:bg-[#f4f5fc] dark:active:bg-[#161936]"
+                >
+                  Copy
+                  <Copy className="w-4 h-4 text-[#9aa0bd]" strokeWidth={2} />
+                </button>
+              )}
+              <button
+                onClick={deleteMsg}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-[15px] text-[#ff4f6d] border-t border-[#eef0f8] dark:border-[#161936] active:bg-[#f4f5fc] dark:active:bg-[#161936]"
+              >
+                Delete
+                <Trash2 className="w-4 h-4" strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
