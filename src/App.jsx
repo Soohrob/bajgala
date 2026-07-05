@@ -957,6 +957,50 @@ const CHARACTERS = [
         "Twice in a row, huh? Somethin's really eating at you. Good — means we're past the small talk. Alright, I'm here. Let's hear it.",
     },
   },
+  {
+    id: "harvey_specter",
+    name: "Harvey Specter",
+    verified: true,
+    baseTypingSpeed: 48,
+    availability: "high",
+    statusText: "Closing a deal",
+    initials: "HS",
+    color: "from-slate-700 to-zinc-900",
+    persona:
+      "You are Harvey Specter, the best closer in New York City from the series 'Suits'. Your tone is supremely confident, sharp, witty, and unshakeable — you have never lost and you don't intend to start. You speak in short, decisive, quotable lines with the swagger of a man in a perfect suit who always has the upper hand. You reframe the user's problems as negotiations and power plays: it's never about the situation, it's about leverage and how you carry yourself. You prize loyalty and winning above almost everything, and you never, ever show weakness or panic. Drop the occasional movie reference. Avoid emojis and hand-wringing. When someone brings you a problem, you don't commiserate — you tell them the move, because you'd rather be a winner than a good loser.",
+    fallback: {
+      greeting:
+        "You texted the best closer in the city, so this must be good. Don't waste it — what's the situation?",
+      general: [
+        "Here's the thing. You're playing this like you have one option. Winners don't have one option. When you're backed against a wall, you break the god damn thing down. What leverage do you actually have here?",
+        "Stop apologizing for wanting to win. That's not arrogance, that's knowing your worth. I don't play the odds, I play the man. Figure out what the other side actually wants, and you own the room.",
+      ],
+      doubleText:
+        "Two texts. You're anxious, and anxious people negotiate against themselves. Breathe. Then tell me what you want the outcome to be — we work backward from there.",
+    },
+  },
+  {
+    id: "elon_musk",
+    name: "Elon Musk",
+    verified: true,
+    baseTypingSpeed: 44,
+    availability: "nocturnal",
+    statusText: "Up too late again",
+    initials: "EM",
+    color: "from-neutral-700 to-red-950",
+    persona:
+      "You are Elon Musk — engineer, founder, and relentless first-principles thinker. Your texting style is terse, blunt, and casual, often lowercase, occasionally dropping a dry joke, a meme reference, or a single emoji like 🚀 or 😂. You think from first principles: strip a problem to its physics and fundamentals, question every requirement, delete parts before optimizing them. You work absurd hours and are most alive late at night. You are impatient with excuses and bureaucracy, obsessed with engineering, manufacturing, energy, AI, and getting humanity to Mars. Keep replies short and punchy — you'd rather send three quick texts than one paragraph. Be provocative and direct, but ultimately point people toward building, iterating fast, and caring about something bigger than themselves.",
+    fallback: {
+      greeting:
+        "hey. still up obviously. what's up?",
+      general: [
+        "ok reason from first principles here. what does physics say is actually required? most of what you're treating as a constraint is just someone else's assumption you inherited",
+        "the best part is no part. the best process step is no step. delete first, optimize later. you're trying to optimize something that shouldn't exist",
+      ],
+      doubleText:
+        "haha ok two texts, you're wired. i get it, it's late. ok focus — what's the actual problem",
+    },
+  },
 ];
 
 const CHAR_MAP = Object.fromEntries(CHARACTERS.map((c) => [c.id, c]));
@@ -2476,7 +2520,7 @@ export default function App() {
             onClick={() => tabTo("chats")}
             className={`flex flex-col items-center gap-1 ${
               activeTab === "chats"
-                ? "text-[#5B6CFF]"
+                ? "text-[#3d5787]"
                 : "text-[#b4b9d2] dark:text-[#585e82]"
             }`}
             aria-label="Chats"
@@ -2491,7 +2535,7 @@ export default function App() {
             </span>
             <span
               className={`w-1 h-1 rounded-full ${
-                activeTab === "chats" ? "bg-[#5B6CFF]" : "bg-transparent"
+                activeTab === "chats" ? "bg-[#3d5787]" : "bg-transparent"
               }`}
             />
           </button>
@@ -2499,7 +2543,7 @@ export default function App() {
             onClick={() => tabTo("contacts")}
             className={`flex flex-col items-center gap-1 ${
               activeTab === "contacts"
-                ? "text-[#5B6CFF]"
+                ? "text-[#3d5787]"
                 : "text-[#b4b9d2] dark:text-[#585e82]"
             }`}
             aria-label="Contacts"
@@ -2507,7 +2551,7 @@ export default function App() {
             <Users className="w-6 h-6" strokeWidth={2} />
             <span
               className={`w-1 h-1 rounded-full ${
-                activeTab === "contacts" ? "bg-[#5B6CFF]" : "bg-transparent"
+                activeTab === "contacts" ? "bg-[#3d5787]" : "bg-transparent"
               }`}
             />
           </button>
@@ -2515,7 +2559,7 @@ export default function App() {
             onClick={() => tabTo("settings")}
             className={`flex flex-col items-center gap-1 ${
               activeTab === "settings"
-                ? "text-[#5B6CFF]"
+                ? "text-[#3d5787]"
                 : "text-[#b4b9d2] dark:text-[#585e82]"
             }`}
             aria-label="Settings"
@@ -2523,7 +2567,7 @@ export default function App() {
             <Settings className="w-6 h-6" strokeWidth={2} />
             <span
               className={`w-1 h-1 rounded-full ${
-                activeTab === "settings" ? "bg-[#5B6CFF]" : "bg-transparent"
+                activeTab === "settings" ? "bg-[#3d5787]" : "bg-transparent"
               }`}
             />
           </button>
@@ -2536,7 +2580,7 @@ export default function App() {
           onPointerMove={onChatPointerMove}
           onPointerUp={onChatPointerUp}
           onPointerCancel={onChatPointerUp}
-          className={`chat-aurora absolute inset-0 z-20 flex flex-col overflow-hidden bg-[#eef0fa] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out [touch-action:pan-y] ${
+          className={`chat-aurora absolute inset-0 z-20 flex flex-col overflow-hidden bg-[#f5f7fd] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out [touch-action:pan-y] ${
             view === "chat" ? "translate-x-0" : "translate-x-full"
           } shadow-[-8px_0_24px_rgba(0,0,0,0.08)]`}
         >
@@ -2778,7 +2822,7 @@ function ThreadRow({
           <p
             className={`text-[13.5px] leading-snug line-clamp-2 mt-0.5 ${
               typingVal
-                ? "text-[#5B6CFF] italic"
+                ? "text-[#3d5787] italic"
                 : "text-[#9aa0bd] dark:text-[#6d7396]"
             }`}
           >
@@ -2793,7 +2837,7 @@ function ThreadRow({
             {fmtRelative(last?.ts)}
           </span>
           {unreadCount > 0 && (
-            <span className="min-w-[22px] h-[22px] px-1.5 rounded-lg bg-[#5B6CFF] text-white text-[11.5px] font-semibold flex items-center justify-center">
+            <span className="min-w-[22px] h-[22px] px-1.5 rounded-lg bg-[#3d5787] text-white text-[11.5px] font-semibold flex items-center justify-center">
               {unreadCount}
             </span>
           )}
@@ -2835,7 +2879,7 @@ function ThreadList({
                 setListMode("inbox");
                 setOpenSwipeId(null);
               }}
-              className="text-[#5B6CFF] active:opacity-60 -ml-2 p-1"
+              className="text-[#3d5787] active:opacity-60 -ml-2 p-1"
               aria-label="Back to messages"
             >
               <ChevronLeft className="w-7 h-7" strokeWidth={2.4} />
@@ -2981,7 +3025,7 @@ function ComposeSheet({ statusMap, onPick, onBroadcast, onGroup, onClose }) {
         <div className="flex items-center justify-between h-9">
           <button
             onClick={onClose}
-            className="text-[17px] text-[#5B6CFF] active:opacity-50"
+            className="text-[17px] text-[#3d5787] active:opacity-50"
           >
             Cancel
           </button>
@@ -3006,11 +3050,11 @@ function ComposeSheet({ statusMap, onPick, onBroadcast, onGroup, onClose }) {
           onClick={onBroadcast}
           className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-200/80 dark:border-neutral-800 active:bg-gray-100 dark:active:bg-neutral-900 text-left"
         >
-          <span className="w-12 h-12 rounded-full bg-[#5B6CFF] flex items-center justify-center shrink-0">
+          <span className="w-12 h-12 rounded-full bg-[#3d5787] flex items-center justify-center shrink-0">
             <Megaphone className="w-5 h-5 text-white" strokeWidth={2} />
           </span>
           <div>
-            <p className="font-semibold text-[16px] text-[#5B6CFF]">
+            <p className="font-semibold text-[16px] text-[#3d5787]">
               New Broadcast
             </p>
             <p className="text-[13px] text-gray-500 dark:text-neutral-400">
@@ -3023,11 +3067,11 @@ function ComposeSheet({ statusMap, onPick, onBroadcast, onGroup, onClose }) {
           onClick={onGroup}
           className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-200/80 dark:border-neutral-800 active:bg-gray-100 dark:active:bg-neutral-900 text-left"
         >
-          <span className="w-12 h-12 rounded-full bg-[#5B6CFF] flex items-center justify-center shrink-0">
+          <span className="w-12 h-12 rounded-full bg-[#3d5787] flex items-center justify-center shrink-0">
             <Users className="w-5 h-5 text-white" strokeWidth={2} />
           </span>
           <div>
-            <p className="font-semibold text-[16px] text-[#5B6CFF]">
+            <p className="font-semibold text-[16px] text-[#3d5787]">
               New Group
             </p>
             <p className="text-[13px] text-gray-500 dark:text-neutral-400">
@@ -3082,7 +3126,7 @@ function GroupSheet({ onCreate, onClose }) {
         <div className="flex items-center justify-between h-9 pb-2">
           <button
             onClick={onClose}
-            className="text-[17px] text-[#5B6CFF] active:opacity-50"
+            className="text-[17px] text-[#3d5787] active:opacity-50"
           >
             Cancel
           </button>
@@ -3099,7 +3143,7 @@ function GroupSheet({ onCreate, onClose }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Group name"
-            className="w-full bg-white dark:bg-[#1e2140] text-black dark:text-white rounded-2xl px-4 py-2.5 text-[15px] outline-none border border-transparent focus:border-[#5B6CFF]"
+            className="w-full bg-white dark:bg-[#1e2140] text-black dark:text-white rounded-2xl px-4 py-2.5 text-[15px] outline-none border border-transparent focus:border-[#3d5787]"
           />
         </div>
       </div>
@@ -3123,7 +3167,7 @@ function GroupSheet({ onCreate, onClose }) {
               <span
                 className={`w-6 h-6 rounded-full flex items-center justify-center border ${
                   on
-                    ? "bg-[#5B6CFF] border-[#5B6CFF]"
+                    ? "bg-[#3d5787] border-[#3d5787]"
                     : "border-gray-300 dark:border-neutral-600"
                 }`}
               >
@@ -3141,7 +3185,7 @@ function GroupSheet({ onCreate, onClose }) {
           disabled={!canCreate}
           className={`w-full rounded-2xl py-3 text-[16px] font-bold ${
             canCreate
-              ? "bg-[#5B6CFF] text-white active:opacity-90"
+              ? "bg-[#3d5787] text-white active:opacity-90"
               : "bg-gray-200 dark:bg-neutral-800 text-gray-400 dark:text-neutral-600"
           }`}
         >
@@ -3175,7 +3219,7 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
         <div className="flex items-center justify-between h-9 pb-2">
           <button
             onClick={onClose}
-            className="text-[17px] text-[#5B6CFF] active:opacity-50"
+            className="text-[17px] text-[#3d5787] active:opacity-50"
           >
             Cancel
           </button>
@@ -3210,7 +3254,7 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
                 className={`w-6 h-6 rounded-full flex items-center justify-center border ${
                   off
                     ? "border-gray-300 dark:border-neutral-600"
-                    : "bg-[#5B6CFF] border-[#5B6CFF]"
+                    : "bg-[#3d5787] border-[#3d5787]"
                 }`}
               >
                 {!off && (
@@ -3248,7 +3292,7 @@ function BroadcastSheet({ onSend, onKeySound, onClose }) {
             aria-label="Send broadcast"
             className={`shrink-0 w-[29px] h-[29px] mb-px rounded-full flex items-center justify-center transition-colors ${
               text.trim() && recipients.length
-                ? "bg-[#5B6CFF] text-white active:opacity-90"
+                ? "bg-[#3d5787] text-white active:opacity-90"
                 : "bg-gray-300 dark:bg-neutral-700 text-white"
             }`}
           >
@@ -3376,7 +3420,7 @@ function ChatView({
           <button
             onClick={() => setShowInfo((v) => !v)}
             className={`p-2 active:opacity-50 ${
-              showInfo ? "text-[#5B6CFF]" : "text-[#232847] dark:text-white"
+              showInfo ? "text-[#3d5787]" : "text-[#232847] dark:text-white"
             }`}
             aria-label="Info"
           >
@@ -3476,10 +3520,10 @@ function ChatView({
                       m.image ? "p-1" : "px-4 py-2.5"
                     } ${
                       isUser
-                        ? `bg-gradient-to-br from-[#6b78ff] to-[#5560f5] text-white shadow-md shadow-indigo-500/25 ${
+                        ? `bg-gradient-to-br from-[#41598c] to-[#37507d] text-white shadow-md shadow-indigo-500/25 ${
                             lastOfGroup ? "rounded-br-[6px]" : ""
                           }`
-                        : `bg-white dark:bg-[#1e2140] text-[#33395c] dark:text-[#e6e8f5] shadow-sm ${
+                        : `bg-[#dfe6f7] dark:bg-[#1e2140] text-[#26304d] dark:text-[#e6e8f5] shadow-sm ${
                             lastOfGroup ? "rounded-bl-[6px]" : ""
                           }`
                     }`}
@@ -3566,7 +3610,7 @@ function ChatView({
         <div className="flex items-end gap-1 bg-white dark:bg-[#1e2140] rounded-[24px] shadow-md pl-1.5 pr-1.5 py-1.5">
           <button
             onClick={() => libRef.current?.click()}
-            className="w-9 h-9 rounded-full bg-[#5B6CFF] text-white flex items-center justify-center active:opacity-80 shrink-0"
+            className="w-9 h-9 rounded-full bg-[#3d5787] text-white flex items-center justify-center active:opacity-80 shrink-0"
             aria-label="Photos"
           >
             <Plus className="w-5 h-5" strokeWidth={2.4} />
@@ -3597,7 +3641,7 @@ function ChatView({
             <button
               onClick={onSend}
               aria-label="Send"
-              className="w-9 h-9 rounded-full bg-[#5B6CFF] text-white flex items-center justify-center active:opacity-80 shrink-0 bubble-in"
+              className="w-9 h-9 rounded-full bg-[#3d5787] text-white flex items-center justify-center active:opacity-80 shrink-0 bubble-in"
             >
               <ArrowUp className="w-5 h-5" strokeWidth={2.6} />
             </button>
@@ -3715,7 +3759,7 @@ function SettingsSheet({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="What should they call you?"
-          className="w-full bg-white dark:bg-[#1e2140] text-[#232847] dark:text-white rounded-2xl px-4 py-3 text-[15px] outline-none border border-transparent focus:border-[#5B6CFF] mb-4"
+          className="w-full bg-white dark:bg-[#1e2140] text-[#232847] dark:text-white rounded-2xl px-4 py-3 text-[15px] outline-none border border-transparent focus:border-[#3d5787] mb-4"
         />
 
         {/* Appearance */}
@@ -3729,7 +3773,7 @@ function SettingsSheet({
               onClick={() => onChangeSettings({ theme: mode })}
               className={`flex-1 py-2 rounded-xl text-[14px] font-semibold capitalize transition-colors ${
                 settings.theme === mode
-                  ? "bg-[#5B6CFF] text-white"
+                  ? "bg-[#3d5787] text-white"
                   : "text-[#9aa0bd]"
               }`}
             >
@@ -3749,7 +3793,7 @@ function SettingsSheet({
           <span
             className={`w-[46px] h-[28px] rounded-full p-[2px] transition-colors ${
               settings.sounds
-                ? "bg-[#5B6CFF]"
+                ? "bg-[#3d5787]"
                 : "bg-[#d6d9ec] dark:bg-[#2a2e4d]"
             }`}
           >
@@ -3772,7 +3816,7 @@ function SettingsSheet({
               value={key}
               onChange={(e) => setKey(e.target.value)}
               placeholder="sk-ant-…"
-              className="w-full bg-white dark:bg-[#1e2140] text-[#232847] dark:text-white rounded-2xl px-4 py-3 text-[15px] outline-none border border-transparent focus:border-[#5B6CFF] mb-1"
+              className="w-full bg-white dark:bg-[#1e2140] text-[#232847] dark:text-white rounded-2xl px-4 py-3 text-[15px] outline-none border border-transparent focus:border-[#3d5787] mb-1"
             />
             <p className="text-[12px] text-[#9aa0bd] leading-snug mb-4">
               Powers the characters. Stored only in this browser.
@@ -3789,7 +3833,7 @@ function SettingsSheet({
 
         <button
           onClick={commit}
-          className="w-full bg-[#5B6CFF] text-white rounded-2xl py-3 text-[16px] font-bold active:opacity-90 mb-3"
+          className="w-full bg-[#3d5787] text-white rounded-2xl py-3 text-[16px] font-bold active:opacity-90 mb-3"
         >
           Save
         </button>

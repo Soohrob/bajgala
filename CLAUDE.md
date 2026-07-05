@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Bajgala is a messaging-app simulator for texting AI personas of 40 thinkers, athletes, and film characters, driven live by the Claude API (`claude-opus-4-8`) from the browser. It's a Vite + React + Tailwind v4 SPA with the long-term goal of shipping as an iOS app (Capacitor wrap + backend proxy are planned but not built).
+Bajgala is a messaging-app simulator for texting AI personas of 42 thinkers, athletes, and film characters, driven live by the Claude API (`claude-opus-4-8`) from the browser. It's a Vite + React + Tailwind v4 SPA with the long-term goal of shipping as an iOS app (Capacitor wrap + backend proxy are planned but not built).
 
 ## Commands
 
@@ -52,7 +52,7 @@ Everything is in localStorage under `bajgala_*` keys, each with a `const LS_*` a
 
 ### UI system
 
-- **Theming**: class-based dark mode via `@custom-variant dark` in `src/index.css`; the `dark` class is applied to the root div from Settings (`light`/`dark`/`auto`, auto follows `prefers-color-scheme`). Palette is hardcoded hex (indigo `#5B6CFF` accent, pink `#ff4fa0` FAB, dark navy surfaces like `#0f1120`/`#1e2140`) per a design-inspiration mockup the user provided — not Tailwind's default colors.
+- **Theming**: class-based dark mode via `@custom-variant dark` in `src/index.css`; the `dark` class is applied to the root div from Settings (`light`/`dark`/`auto`, auto follows `prefers-color-scheme`). Palette is hardcoded hex (muted navy `#3d5787` accent + outgoing bubbles, light periwinkle `#dfe6f7` incoming bubbles, near-white `#f5f7fd` chat bg, dark navy surfaces like `#0f1120`/`#1e2140`) per a Google-Messages-style mockup the user provided — not Tailwind's default colors.
 - **Screen transitions**: thread list and chat are two absolutely-positioned panes translated inside an `overflow-hidden` stage. **Never use `scrollIntoView` for chat autoscroll** — it horizontally scrolls the stage and breaks navigation (past bug); pin via `scrollerRef.scrollTop = scrollHeight` instead.
 - **Swipe rows** (`ThreadRow`): dragging writes `style.transform` directly on the DOM node (zero React re-renders mid-drag), with velocity-based flick detection and rubber-band overdrag. State (`openSwipeId`) only changes on release. Keep drag handling imperative; routing it through React state causes jank and breaks under batched synthetic events. Long-press (480ms) on a row pins/unpins the chat (max 3, `bajgala_pins_v1`; pinned sort first).
 - **Layout shells**: the phone frame is a column of [content area (list pane + all sheets) → fixed tab bar], with the chat pane absolutely positioned over everything — that's how the tab bar stays visible on contacts/settings but disappears inside a chat. Don't move the sheets out of the content area or they'll cover the tab bar again.
