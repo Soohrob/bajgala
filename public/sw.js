@@ -1,6 +1,6 @@
 // Bajgala service worker — stale-while-revalidate for same-origin assets so
 // the installed app opens instantly and works as an offline shell.
-const CACHE = "bajgala-v1";
+const CACHE = "bajgala-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));

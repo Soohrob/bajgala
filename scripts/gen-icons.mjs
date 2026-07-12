@@ -70,8 +70,8 @@ const mix = (c1, c2, t) => c1.map((v, i) => lerp(v, c2[i], t));
 
 function drawIcon(S, { maskable = false } = {}) {
   const rgba = Buffer.alloc(S * S * 4);
-  const top = [122, 108, 255], bottom = [72, 84, 220]; // indigo gradient
-  const dot = [91, 108, 255];
+  const top = [95, 131, 196], bottom = [44, 70, 128]; // navy gradient
+  const dot = [61, 87, 135];
   const cornerR = maskable ? 0 : S * 0.225;
   // bubble geometry (relative to S)
   const bc = { x: S * 0.5, y: S * 0.46 };

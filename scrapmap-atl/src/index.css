@@ -1,0 +1,260 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --color-forest: #0f6e56;
+  --color-forest-dark: #0a5541;
+  --color-mint: #eaf3de;
+  --color-plum: #6d4aa3;
+  --color-plum-light: #f0eaf9;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  background: #e7eae4;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Motion system ─────────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes toast-down {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+}
+@keyframes bounce-dot {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  40% {
+    transform: translateY(-7px);
+    opacity: 1;
+  }
+}
+@keyframes soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(15, 110, 86, 0.35);
+  }
+  60% {
+    box-shadow: 0 0 0 7px rgba(15, 110, 86, 0);
+  }
+}
+
+.anim-screen {
+  animation: fade-up 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-pop {
+  animation: pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-toast {
+  animation: toast-down 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.sheet-backdrop {
+  animation: fade-in 0.22s ease both;
+}
+.sheet-panel {
+  animation: sheet-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Staggered card entrances inside a screen */
+.anim-screen > * {
+  animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-screen > *:nth-child(1) { animation-delay: 0.02s; }
+.anim-screen > *:nth-child(2) { animation-delay: 0.06s; }
+.anim-screen > *:nth-child(3) { animation-delay: 0.1s; }
+.anim-screen > *:nth-child(4) { animation-delay: 0.14s; }
+.anim-screen > *:nth-child(5) { animation-delay: 0.18s; }
+.anim-screen > *:nth-child(6) { animation-delay: 0.22s; }
+.anim-screen > *:nth-child(7) { animation-delay: 0.26s; }
+.anim-screen > *:nth-child(8) { animation-delay: 0.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Surfaces & components ─────────────────────────────────────────────── */
+.app-bg {
+  background:
+    radial-gradient(900px 480px at 110% -8%, rgba(234, 243, 222, 0.9), transparent 65%),
+    radial-gradient(700px 420px at -25% 112%, rgba(240, 234, 249, 0.8), transparent 60%),
+    linear-gradient(180deg, #f7faf5 0%, #f4f6f1 100%);
+}
+
+@layer components {
+  .card {
+    border-radius: 1.4rem;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow:
+      0 12px 32px -14px rgba(15, 110, 86, 0.22),
+      0 2px 8px rgba(15, 17, 32, 0.04);
+    backdrop-filter: blur(8px);
+  }
+  .btn-primary {
+    background-image: linear-gradient(135deg, #0a5541, #0f6e56 55%, #159467);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 8px 20px -8px rgba(15, 110, 86, 0.55);
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.2s ease,
+      filter 0.2s ease;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 10px 26px -8px rgba(15, 110, 86, 0.65);
+  }
+  .btn-primary:active {
+    transform: scale(0.97);
+  }
+  .btn-primary:disabled {
+    background-image: none;
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    box-shadow: none;
+    transform: none;
+  }
+  .btn-plum {
+    background-image: linear-gradient(135deg, #533284, #6d4aa3 55%, #8a63c4);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 8px 20px -8px rgba(109, 74, 163, 0.55);
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.2s ease,
+      filter 0.2s ease;
+  }
+  .btn-plum:hover {
+    filter: brightness(1.08);
+  }
+  .btn-plum:active {
+    transform: scale(0.97);
+  }
+  .pressable {
+    transition: transform 0.15s ease, opacity 0.2s ease;
+  }
+  .pressable:active {
+    transform: scale(0.96);
+  }
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+.gradient-title {
+  background: linear-gradient(92deg, #0a5541, #0f6e56 55%, #6d4aa3 115%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+input,
+select,
+textarea {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  box-shadow: 0 0 0 3px rgba(15, 110, 86, 0.13);
+}
+
+.loading-dots span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #0f6e56;
+  animation: bounce-dot 1.1s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+  background: #6d4aa3;
+}
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* ── Leaflet pin markers (divIcons) ────────────────────────────────────── */
+.pin-dot {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.pin-neighbor .pin-dot {
+  background: #0f6e56;
+}
+.pin-group .pin-dot {
+  background: #6d4aa3;
+  width: 22px;
+  height: 22px;
+  animation: soft-pulse 2.4s ease-out infinite;
+}
+.pin-dropoff .pin-dot {
+  background: #d97706;
+}
+.pin-you .pin-dot {
+  background: #2563eb;
+  animation: soft-pulse 2.4s ease-out infinite;
+}
+
+.leaflet-container {
+  font: inherit;
+}

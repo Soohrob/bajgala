@@ -1478,13 +1478,26 @@ async function generateReply(apiKey, char, messages, doubleTexted, userName, ext
    SMALL UI PIECES
    ========================================================================== */
 
+/** Portrait photo (public/avatars/{id}.jpg) with monogram-gradient fallback. */
 function Avatar({ char, size = "w-12 h-12", text = "text-base", dot = false }) {
+  const [imgOk, setImgOk] = useState(true);
   return (
     <div className={`relative shrink-0 ${size}`}>
       <div
-        className={`w-full h-full rounded-full bg-gradient-to-b ${char.color} flex items-center justify-center text-white font-medium ${text} select-none`}
+        className={`w-full h-full rounded-full overflow-hidden ring-1 ring-black/10 dark:ring-white/10 bg-gradient-to-b ${char.color} flex items-center justify-center text-white font-medium ${text} select-none`}
       >
-        {char.initials}
+        {imgOk ? (
+          <img
+            src={`${import.meta.env.BASE_URL}avatars/${char.id}.jpg`}
+            alt=""
+            loading="lazy"
+            draggable={false}
+            onError={() => setImgOk(false)}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          char.initials
+        )}
       </div>
       {dot && isOnline(char) && (
         <span className="online-pulse absolute bottom-0 left-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-[#0f1120]" />
@@ -1501,17 +1514,15 @@ function GroupAvatar({ group, size = "w-12 h-12" }) {
   return (
     <div className={`relative shrink-0 ${size}`}>
       {members[0] && (
-        <div
-          className={`absolute top-0 left-0 w-[68%] h-[68%] rounded-full bg-gradient-to-b ${members[0].color} flex items-center justify-center text-white text-[11px] font-medium select-none`}
-        >
-          {members[0].initials}
-        </div>
+        <Avatar
+          char={members[0]}
+          size="absolute top-0 left-0 w-[68%] h-[68%]"
+          text="text-[11px]"
+        />
       )}
       {members[1] && (
-        <div
-          className={`absolute bottom-0 right-0 w-[68%] h-[68%] rounded-full bg-gradient-to-b ${members[1].color} flex items-center justify-center text-white text-[11px] font-medium border-2 border-white dark:border-[#0f1120] select-none`}
-        >
-          {members[1].initials}
+        <div className="absolute bottom-0 right-0 w-[72%] h-[72%] rounded-full border-2 border-white dark:border-[#0f1120]">
+          <Avatar char={members[1]} size="w-full h-full" text="text-[11px]" />
         </div>
       )}
     </div>
@@ -2167,6 +2178,9 @@ export default function App() {
   useEffect(() => {
     const el = scrollerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
+    // Guard against browser focus-scrolling the overflow-hidden pane sideways.
+    const pane = chatPaneRef.current;
+    if (pane && pane.scrollLeft !== 0) pane.scrollLeft = 0;
   }, [activeMsgs.length, typing[activeId], view]);
 
   const openChat = (charId) => {
@@ -2514,13 +2528,14 @@ export default function App() {
           )}
         </div>
 
-        {/* TAB BAR — fixed on every screen except inside a chat */}
-        <div className="h-[60px] shrink-0 bg-white dark:bg-[#0f1120] border-t border-[#eef0f8] dark:border-[#1c1f38] flex items-center justify-around px-8">
+        {/* TAB BAR — floating glass dock, fixed on every screen except inside a chat */}
+        <div className="shrink-0 bg-white dark:bg-[#0f1120] px-5 pb-3.5 pt-1.5">
+          <div className="glass h-[56px] rounded-full ring-1 ring-black/5 dark:ring-white/10 shadow-lg shadow-black/10 flex items-center justify-around px-6">
           <button
             onClick={() => tabTo("chats")}
             className={`flex flex-col items-center gap-1 ${
               activeTab === "chats"
-                ? "text-[#3d5787]"
+                ? "text-[#3d5787] dark:text-[#a9bfe8]"
                 : "text-[#b4b9d2] dark:text-[#585e82]"
             }`}
             aria-label="Chats"
@@ -2535,7 +2550,7 @@ export default function App() {
             </span>
             <span
               className={`w-1 h-1 rounded-full ${
-                activeTab === "chats" ? "bg-[#3d5787]" : "bg-transparent"
+                activeTab === "chats" ? "bg-[#3d5787] dark:bg-[#a9bfe8]" : "bg-transparent"
               }`}
             />
           </button>
@@ -2543,7 +2558,7 @@ export default function App() {
             onClick={() => tabTo("contacts")}
             className={`flex flex-col items-center gap-1 ${
               activeTab === "contacts"
-                ? "text-[#3d5787]"
+                ? "text-[#3d5787] dark:text-[#a9bfe8]"
                 : "text-[#b4b9d2] dark:text-[#585e82]"
             }`}
             aria-label="Contacts"
@@ -2551,7 +2566,7 @@ export default function App() {
             <Users className="w-6 h-6" strokeWidth={2} />
             <span
               className={`w-1 h-1 rounded-full ${
-                activeTab === "contacts" ? "bg-[#3d5787]" : "bg-transparent"
+                activeTab === "contacts" ? "bg-[#3d5787] dark:bg-[#a9bfe8]" : "bg-transparent"
               }`}
             />
           </button>
@@ -2559,7 +2574,7 @@ export default function App() {
             onClick={() => tabTo("settings")}
             className={`flex flex-col items-center gap-1 ${
               activeTab === "settings"
-                ? "text-[#3d5787]"
+                ? "text-[#3d5787] dark:text-[#a9bfe8]"
                 : "text-[#b4b9d2] dark:text-[#585e82]"
             }`}
             aria-label="Settings"
@@ -2567,10 +2582,11 @@ export default function App() {
             <Settings className="w-6 h-6" strokeWidth={2} />
             <span
               className={`w-1 h-1 rounded-full ${
-                activeTab === "settings" ? "bg-[#3d5787]" : "bg-transparent"
+                activeTab === "settings" ? "bg-[#3d5787] dark:bg-[#a9bfe8]" : "bg-transparent"
               }`}
             />
           </button>
+          </div>
         </div>
 
         {/* ACTIVE CHAT — slides over everything, tab bar included */}
@@ -2580,10 +2596,14 @@ export default function App() {
           onPointerMove={onChatPointerMove}
           onPointerUp={onChatPointerUp}
           onPointerCancel={onChatPointerUp}
-          className={`chat-aurora absolute inset-0 z-20 flex flex-col overflow-hidden bg-[#f5f7fd] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out [touch-action:pan-y] ${
+          className={`absolute inset-0 z-20 flex flex-col overflow-hidden bg-[#f5f7fd] dark:bg-[#0c0e1d] transition-transform duration-300 ease-out [touch-action:pan-y] ${
             view === "chat" ? "translate-x-0" : "translate-x-full"
           } shadow-[-8px_0_24px_rgba(0,0,0,0.08)]`}
         >
+          {/* Aurora lives in its own clipped layer: its blurred blobs overflow
+              the edges, and letting them overflow the pane itself creates
+              scrollable overflow the browser will happily side-scroll. */}
+          <div className="chat-aurora absolute inset-0 overflow-hidden pointer-events-none" />
           {(activeChar || activeGroup) && (
             <ChatView
               char={activeChar}
@@ -2632,6 +2652,7 @@ const SNAP_EASE = "transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)";
 
 function ThreadRow({
   thread,
+  index = 0,
   last,
   unreadCount,
   typingVal,
@@ -2771,7 +2792,10 @@ function ThreadRow({
       ).replace(/\s+/g, " ");
 
   return (
-    <div className="relative overflow-hidden">
+    <div
+      className="relative overflow-hidden row-in"
+      style={{ animationDelay: `${Math.min(index, 10) * 32}ms` }}
+    >
       {/* actions revealed behind the row (hidden until open/dragged) */}
       <div
         ref={actionsRef}
@@ -2814,8 +2838,12 @@ function ThreadRow({
         style={{ touchAction: "pan-y", willChange: "transform" }}
         className="relative w-full flex items-center gap-3.5 px-5 bg-white dark:bg-[#0f1120] active:bg-[#f4f5fc] dark:active:bg-[#161936] text-left"
       >
-        {char ? <Avatar char={char} dot /> : <GroupAvatar group={group} />}
-        <div className="flex-1 min-w-0 py-3">
+        {char ? (
+          <Avatar char={char} size="w-[52px] h-[52px]" dot />
+        ) : (
+          <GroupAvatar group={group} size="w-[52px] h-[52px]" />
+        )}
+        <div className="flex-1 min-w-0 py-3.5">
           <p className="font-semibold text-[15.5px] text-[#232847] dark:text-white truncate">
             {thread.name}
           </p>
@@ -2885,7 +2913,7 @@ function ThreadList({
               <ChevronLeft className="w-7 h-7" strokeWidth={2.4} />
             </button>
           )}
-          <h1 className="flex-1 text-[30px] font-extrabold tracking-tight gradient-text">
+          <h1 className="flex-1 text-[30px] font-bold display-font gradient-text">
             {inArchive ? "Archived" : "Messages"}
           </h1>
           <button
@@ -2976,10 +3004,11 @@ function ThreadList({
             )}
           </div>
         )}
-        {threads.map((t) => (
+        {threads.map((t, i) => (
           <ThreadRow
             key={t.id}
             thread={t}
+            index={i}
             last={t.last}
             unreadCount={t.unreadCount}
             typingVal={typing[t.id] || false}
@@ -3001,7 +3030,7 @@ function ThreadList({
         <button
           onClick={onCompose}
           aria-label="New message"
-          className="absolute bottom-5 right-5 z-20 w-14 h-14 rounded-full bg-[#b4b9d2] dark:bg-[#3a4063] text-white shadow-lg shadow-black/15 flex items-center justify-center active:scale-95 transition-transform"
+          className="absolute bottom-5 right-5 z-20 w-14 h-14 rounded-full bg-gradient-to-br from-[#48639c] to-[#2c4680] text-white shadow-lg shadow-[#3d5787]/40 flex items-center justify-center active:scale-90 transition-transform"
         >
           <Plus className="w-7 h-7" strokeWidth={2.4} />
         </button>
@@ -3385,7 +3414,7 @@ function ChatView({
 
   return (
     <>
-      <div className="relative z-10 bg-white dark:bg-[#12142a] rounded-b-[26px] shadow-sm">
+      <div className="relative z-10 glass rounded-b-[26px] shadow-sm">
         <div className="flex items-center px-2 pt-4 pb-3">
           <button
             onClick={onBack}
@@ -3395,7 +3424,7 @@ function ChatView({
             <ChevronLeft className="w-6 h-6" strokeWidth={2.2} />
           </button>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0">
-            <span className="text-[17px] font-bold text-[#232847] dark:text-white truncate max-w-full">
+            <span className="text-[17px] font-bold display-font text-[#232847] dark:text-white truncate max-w-full">
               {char ? char.name : group.name}
             </span>
             {group ? (
@@ -3607,7 +3636,7 @@ function ChatView({
             e.target.value = "";
           }}
         />
-        <div className="flex items-end gap-1 bg-white dark:bg-[#1e2140] rounded-[24px] shadow-md pl-1.5 pr-1.5 py-1.5">
+        <div className="flex items-end gap-1 glass rounded-[24px] shadow-lg shadow-black/5 ring-1 ring-black/5 dark:ring-white/10 pl-1.5 pr-1.5 py-1.5">
           <button
             onClick={() => libRef.current?.click()}
             className="w-9 h-9 rounded-full bg-[#3d5787] text-white flex items-center justify-center active:opacity-80 shrink-0"

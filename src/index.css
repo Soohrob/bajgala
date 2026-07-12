@@ -3,6 +3,19 @@
 /* Class-based dark mode (toggled from Settings, not just the OS) */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Self-hosted display font (OFL) — used for headings/wordmark/buttons */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/space-grotesk.woff2") format("woff2");
+}
+.display-font {
+  font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -0.02em;
+}
+
 html,
 body,
 #root {
@@ -44,10 +57,10 @@ body {
   animation: typing-bounce 1.2s infinite ease-in-out;
 }
 
-/* New incoming bubble pop */
+/* New incoming bubble pop — slight spring overshoot */
 @keyframes bubble-in {
   from {
-    transform: translateY(8px) scale(0.96);
+    transform: translateY(10px) scale(0.92);
     opacity: 0;
   }
   to {
@@ -56,7 +69,32 @@ body {
   }
 }
 .bubble-in {
-  animation: bubble-in 0.22s ease-out both;
+  animation: bubble-in 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* Staggered thread-list entrance (delay set inline per row index) */
+@keyframes row-in {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.row-in {
+  animation: row-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Frosted glass surfaces */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
+.dark .glass {
+  background: rgba(15, 17, 32, 0.66);
 }
 
 /* Pulsing "online" presence dot */
@@ -75,12 +113,41 @@ body {
   animation: online-pulse 2s infinite;
 }
 
-/* Gradient wordmark for the Messages heading */
+/* Gradient wordmark for the Messages heading — slow living shimmer */
+@keyframes gradient-slide {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
 .gradient-text {
-  background: linear-gradient(120deg, #2c4680 0%, #3d5787 50%, #5f83c4 110%);
+  background: linear-gradient(
+    115deg,
+    #2c4680 0%,
+    #3d5787 35%,
+    #6f92d4 55%,
+    #3d5787 75%,
+    #2c4680 100%
+  );
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: gradient-slide 9s ease-in-out infinite;
+}
+.dark .gradient-text {
+  background-image: linear-gradient(
+    115deg,
+    #7d9bda 0%,
+    #a9bfe8 35%,
+    #dfe6f7 55%,
+    #a9bfe8 75%,
+    #7d9bda 100%
+  );
+  background-size: 220% 100%;
 }
 
 /* Soft animated wash behind the chat stream */
